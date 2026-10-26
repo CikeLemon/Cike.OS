@@ -16,4 +16,8 @@
     <ProjectReference Include="..\Cike.OS.Domain.Shared\Cike.OS.Domain.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Entities\" />
+  </ItemGroup>
+
 </Project>
