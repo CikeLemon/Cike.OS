@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/solution items/">
+    <File Path=".editorconfig" />
+    <File Path="Delete-BIN-OBJ-Folders.bat" />
+    <File Path="Directory.Build.props" />
+    <File Path="nuget.config" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Cike.OS.Application.Contracts/Cike.OS.Application.Contracts.csproj" Id="2e9b75c0-a920-4254-85e0-ebcd5a6eb268" />
+    <Project Path="src/Cike.OS.Application/Cike.OS.Application.csproj" Id="da35c319-e3e4-4054-818e-2fbf62cda8a7" />
+    <Project Path="src/Cike.OS.Domain.Shared/Cike.OS.Domain.Shared.csproj" Id="9f167114-ec52-437b-99d3-4727474fdd4e" />
+    <Project Path="src/Cike.OS.Domain/Cike.OS.Domain.csproj" Id="1ff65938-4ad2-47fb-9a7e-a2e3b97ab49b" />
+    <Project Path="src/Cike.OS.EntityFrameworkCore/Cike.OS.EntityFrameworkCore.csproj" Id="8cab9f26-672c-4dc1-b57f-0a36e93350f9" />
+    <Project Path="src/Cike.OS.Service.Open/Cike.OS.Service.Open.csproj" Id="1a374aa7-37b2-4acb-9420-2c7437782195" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
