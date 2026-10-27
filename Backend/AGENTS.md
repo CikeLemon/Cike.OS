@@ -39,7 +39,7 @@
 # 构建
 dotnet build Cike.OS.slnx
 
-# 运行主服务（开发环境，http://localhost:5209）
+# 运行主服务（开发环境，http://cike-os-service-open.dev.localhost:5182）
 dotnet run --project src/Cike.OS.Service.Open
 
 # 全量测试（Domain、管理 API 与 SSO；HTTP 集成测试使用隔离 SQLite 内存库）
