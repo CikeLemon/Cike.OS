@@ -1,5 +1,3 @@
-using Cike.OS.Domain.Shared.Enums;
-
 namespace Cike.OS.Domain.Entities;
 
 public class ModelProvider : FullAuditedAggregateRoot<long>, IMultiTenant
@@ -8,5 +6,5 @@ public class ModelProvider : FullAuditedAggregateRoot<long>, IMultiTenant
 
     public string Name { get; set; } = null!;
 
-    public ModelProviderType Type { get; set; }
+    public ModelProviderSetting Setting { get; set; } = null!;
 }
