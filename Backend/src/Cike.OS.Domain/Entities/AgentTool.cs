@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace Cike.OS.Domain.Entities;
 
-namespace Cike.OS.Domain.Entities
+public class AgentTool : AuditedEntity<long>
 {
-    internal class AgentTool
-    {
-    }
+    public long AgentToolPackageId { get; set; }
+
+    public long ToolId { get; set; }
 }
