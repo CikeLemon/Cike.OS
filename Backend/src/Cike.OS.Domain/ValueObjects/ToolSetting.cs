@@ -1,9 +1,15 @@
 using ModelContextProtocol.Client;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using Cike.OS.Domain.ValueObjects;
 
 namespace Cike.OS.Domain.Shared.ValueObjects;
 
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(SkillToolSetting), "skill")]
+[JsonDerivedType(typeof(HttpMcpToolSetting), "httpMcp")]
+[JsonDerivedType(typeof(StdioMcpToolSetting), "stdioMcp")]
 public abstract class ToolSetting
 {
 }
@@ -29,7 +35,7 @@ public class HttpMcpToolSetting : ToolSetting
 
     public string? CredentialKey { get; set; }
 
-    public IDictionary<string, string>? AdditionalHeaders { get; set; }
+    public IDictionary<string, ToolValue>? AdditionalHeaders { get; set; }
 }
 
 public class StdioMcpToolSetting : ToolSetting
@@ -42,5 +48,5 @@ public class StdioMcpToolSetting : ToolSetting
 
     public string? WorkingDirectory { get; set; }
 
-    public IDictionary<string, string?>? EnvironmentVariables { get; set; }
+    public IDictionary<string, ToolValue>? EnvironmentVariables { get; set; }
 }

@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Cike.Auth" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.Caching" Version="$(CikeVersion)" />
+    <PackageReference Include="Cike.Core" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.Cqrs" Version="$(CikeVersion)" />
-    <PackageReference Include="Cike.Auth" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.EventBus.Local" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.FluentValidation" Version="$(CikeVersion)" />
+    <PackageReference Include="Cike.Security" Version="$(CikeVersion)" />
     <PackageReference Include="Mapster" Version="7.4.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
   </ItemGroup>

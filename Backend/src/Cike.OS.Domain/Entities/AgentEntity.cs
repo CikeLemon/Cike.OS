@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace Cike.OS.Domain.Entities;
 
 public class AgentEntity : FullAuditedAggregateRoot<long>, IMultiTenant

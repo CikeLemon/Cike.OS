@@ -13,5 +13,7 @@
     <Project Path="src/Cike.OS.EntityFrameworkCore/Cike.OS.EntityFrameworkCore.csproj" Id="8cab9f26-672c-4dc1-b57f-0a36e93350f9" />
     <Project Path="src/Cike.OS.Service.Open/Cike.OS.Service.Open.csproj" Id="1a374aa7-37b2-4acb-9420-2c7437782195" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Cike.OS.Tests/Cike.OS.Tests.csproj" Id="a8f5d1c7-45c7-4e6a-9d13-7bb25fa00c7c" />
+  </Folder>
 </Solution>

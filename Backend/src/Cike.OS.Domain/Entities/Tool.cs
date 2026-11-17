@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace Cike.OS.Domain.Entities;
 
 public class Tool : FullAuditedAggregateRoot<long>, IMultiTenant
@@ -17,4 +13,8 @@ public class Tool : FullAuditedAggregateRoot<long>, IMultiTenant
     public ToolType Type { get; set; }
 
     public long ToolPackageId { get; set; }
+
+    public List<ToolParameterDefinition> Parameters { get; set; } = [];
+
+    public ToolSetting Setting { get; set; } = null!;
 }

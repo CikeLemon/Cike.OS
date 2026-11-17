@@ -14,6 +14,10 @@
     <PackageReference Include="Cike.AspNetCore.MinimalAPIs" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.AspNetCore.Swagger" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.Locks.DistributedRedis" Version="$(CikeVersion)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="$(MicrosoftPackageVersion)">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(MicrosoftPackageVersion)" />
   </ItemGroup>
