@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.AI;
 
-namespace Cike.OS.Domain.Entities
+namespace Cike.OS.Domain.Entities;
+
+public class ConversationMessage : FullAuditedAggregateRoot<long>, IMultiTenant
 {
-    internal class ConversationMessage
-    {
-    }
+    public long TenantId { get; set; }
+
+    public long ConversationId { get; set; }
+
+    public ChatRole SenderRole { get; set; }
+
+    public long SenderId { get; set; }
 }

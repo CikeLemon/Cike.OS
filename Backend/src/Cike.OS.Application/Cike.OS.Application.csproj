@@ -13,6 +13,7 @@
     <PackageReference Include="Cike.FluentValidation" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.Security" Version="$(CikeVersion)" />
     <PackageReference Include="Mapster" Version="7.4.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Abstractions" Version="1.28.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
   </ItemGroup>
 
