@@ -1,7 +1,9 @@
 namespace Cike.OS.Domain.Entities;
 
-public class AgentToolPackage : AuditedEntity<long>
+public class AgentToolPackage : FullAuditedAggregateRoot<long>, IMultiTenant
 {
+    public long TenantId { get; set; }
+
     public long AgentId { get; set; }
 
     public long ToolPackageId { get; set; }

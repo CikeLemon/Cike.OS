@@ -1,6 +1,6 @@
 namespace Cike.OS.Domain.Entities;
 
-public class ModelEntity : AuditedEntity<long>, IMultiTenant
+public class ModelEntity : FullAuditedEntity<long>, IMultiTenant
 {
     public long TenantId { get; set; }
 

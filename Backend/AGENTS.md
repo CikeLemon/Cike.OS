@@ -15,7 +15,7 @@
 - 新实体/聚合根 → `Domain`，按限界上下文建子目录（现有：`Subjects/`）
 - 新枚举/常量 → `Domain.Shared/Enums/`
 - 新用例 → Application 定义 Command/Query、Validator 与 `[LocalEventHandler]` Handler，Contracts 仅保留对外 DTO；通过 `ILocalEventBus.PublishAsync` 执行，不增加转发 AppService
-- 新实体映射 → `EntityFrameworkCore/EntityConfigurations/`（当前集中在 `SubjectEntityConfiguration.cs`，按 `IEntityTypeConfiguration<T>` 逐实体配置）
+- 新实体映射 → `EntityFrameworkCore/EntityConfigurations/`（按聚合域分组文件：Agent / Conversation / Model / Tool 四组，每组文件内逐实体一个 `IEntityTypeConfiguration<T>` 配置类；索引一律非唯一，理由见 `docs/adr/0001-非唯一索引与软删共存.md`）
 
 ## DDD 编码约定
 
