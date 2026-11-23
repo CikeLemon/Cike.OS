@@ -10,9 +10,9 @@ public class CikeOSDbContext : CikeDbContext<CikeOSDbContext>
     {
     }
 
-    public DbSet<Tool> Tools => Set<Tool>();
+    public virtual DbSet<Tool> Tools { get; set; }
 
-    public DbSet<UserToolConfiguration> UserToolConfigurations => Set<UserToolConfiguration>();
+    public virtual DbSet<UserToolConfiguration> UserToolConfigurations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

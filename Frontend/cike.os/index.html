@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>cike.os</title>
+    <!-- 预挂载暗色类，避免暗色用户首帧闪白；key 与取值规则须与 src/composables/useTheme.ts 保持一致 -->
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('cike-os-theme')
+          var dark = stored === 'dark'
+            || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
