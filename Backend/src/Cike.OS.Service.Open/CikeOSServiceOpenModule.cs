@@ -6,9 +6,6 @@ using Cike.Core.Modularity;
 using Cike.FluentValidation;
 using Cike.OS.Application;
 using Cike.OS.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 
 namespace Cike.OS.Service.Open;

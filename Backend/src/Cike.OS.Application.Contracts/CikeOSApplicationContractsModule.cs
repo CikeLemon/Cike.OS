@@ -1,10 +1,6 @@
-using Cike.Core.Modularity;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace Cike.OS.Application.Contracts;
 
+[DependsOn(typeof(CikeOSDomainSharedModule))]
 public class CikeOSApplicationContractsModule : CikeModule
 {
 }
