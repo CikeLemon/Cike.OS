@@ -1,21 +1,22 @@
 using ModelContextProtocol.Client;
-using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
-using Cike.OS.Domain.ValueObjects;
 
 namespace Cike.OS.Domain.Shared.ValueObjects;
 
+/// <summary>
+/// 工具设置（多态值对象）。位于 Domain.Shared，直接作为 API 契约与持久化形状：
+/// 判别键为 <c>type</c>，取值与 <see cref="ToolType"/> 一致。
+/// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(SkillToolSetting), "skill")]
-[JsonDerivedType(typeof(HttpMcpToolSetting), "httpMcp")]
-[JsonDerivedType(typeof(StdioMcpToolSetting), "stdioMcp")]
+[JsonDerivedType(typeof(SkillToolSetting), (int)ToolType.Skill)]
+[JsonDerivedType(typeof(HttpMcpToolSetting), (int)ToolType.HttpMcp)]
+[JsonDerivedType(typeof(StdioMcpToolSetting), (int)ToolType.StdioMcp)]
 public abstract class ToolSetting
 {
 }
 
 public class SkillToolSetting : ToolSetting
 {
+    /// <summary>技能包存放位置：相对存储根的路径，由技能包上传接口返回。</summary>
     public string Directory { get; set; } = string.Empty;
 }
 

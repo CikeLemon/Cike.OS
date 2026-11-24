@@ -11,10 +11,12 @@
     <PackageReference Include="Cike.Cqrs" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.EventBus.Local" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.FluentValidation" Version="$(CikeVersion)" />
+    <PackageReference Include="Cike.MultiTenancy" Version="$(CikeVersion)" />
     <PackageReference Include="Cike.Security" Version="$(CikeVersion)" />
     <PackageReference Include="Mapster" Version="7.4.0" />
     <PackageReference Include="Microsoft.Agents.AI.Abstractions" Version="1.28.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(MicrosoftPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 using Cike.Core.DependencyInjection;
 using Cike.OS.Domain.Shared.Enums;
-using Cike.OS.Domain.ValueObjects;
+using Cike.OS.Domain.Shared.ValueObjects;
 
 namespace Cike.OS.Domain.Services;
 

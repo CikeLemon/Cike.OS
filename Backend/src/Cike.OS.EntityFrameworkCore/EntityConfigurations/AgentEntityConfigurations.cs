@@ -1,8 +1,8 @@
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Shared.Json;
 using Cike.OS.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Text.Json;
 
 namespace Cike.OS.EntityFrameworkCore.EntityConfigurations;
 
@@ -20,8 +20,8 @@ public class AgentEntityConfiguration : IEntityTypeConfiguration<AgentEntity>
 
         builder.Property(x => x.Options)
             .HasConversion(
-                options => JsonSerializer.Serialize(options, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<AgentOptions>(json, (JsonSerializerOptions?)null) ?? new AgentOptions())
+                options => JsonHelper.Serialize(options),
+                json => JsonHelper.Deserialize<AgentOptions>(json) ?? new AgentOptions())
             .HasColumnType("json");
 
         builder.HasIndex(x => x.TenantId);

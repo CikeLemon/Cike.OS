@@ -5,7 +5,6 @@ using Cike.OS.Application.UserToolConfigurations.Queries;
 using Cike.OS.Domain.Entities;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
-using Cike.OS.Domain.ValueObjects;
 using Cike.OS.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -30,18 +29,12 @@ public class UserToolConfigurationTests : IClassFixture<CikeOSTestHost>
         using var scope = _host.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepository<Tool, long>>();
 
-        var tool = new Tool
-        {
-            Code = $"tool-{Random.Shared.Next(1000, int.MaxValue)}",
-            Name = "Test tool",
-            Type = ToolType.Mcp,
-            ToolPackageId = 1,
-            Setting = new HttpMcpToolSetting
-            {
-                Name = "Test MCP",
-                Endpoint = "http://localhost:5000",
-            },
-            Parameters =
+        var tool = Tool.Create(
+            $"tool-{Random.Shared.Next(1000, int.MaxValue)}",
+            "Test tool",
+            string.Empty,
+            ToolType.HttpMcp,
+            1,
             [
                 new ToolParameterDefinition
                 {
@@ -51,7 +44,11 @@ public class UserToolConfigurationTests : IClassFixture<CikeOSTestHost>
                     Sensitive = true,
                 },
             ],
-        };
+            new HttpMcpToolSetting
+            {
+                Name = "Test MCP",
+                Endpoint = "http://localhost:5000",
+            });
 
         return await repository.InsertAsync(tool);
     }

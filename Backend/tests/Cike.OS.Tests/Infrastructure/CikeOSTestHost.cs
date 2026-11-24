@@ -15,9 +15,13 @@ namespace Cike.OS.Tests.Infrastructure;
 public sealed class CikeOSTestHost : IAsyncLifetime
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly string _skillRootPath = Path.Combine(Path.GetTempPath(), "cike-os-tests", Guid.NewGuid().ToString("N"));
     private ServiceProvider _serviceProvider = default!;
 
     public IServiceProvider ServiceProvider => _serviceProvider;
+
+    /// <summary>技能包测试存储根：每个宿主实例一个独立临时目录，释放时整目录删除。</summary>
+    public string SkillRootPath => _skillRootPath;
 
     public async Task InitializeAsync()
     {
@@ -28,6 +32,8 @@ public sealed class CikeOSTestHost : IAsyncLifetime
 
         var configuration = new ConfigurationManager();
         configuration["ConnectionStrings:CikeOS"] = "DataSource=:memory:";
+        configuration["SkillStorage:RootPath"] = _skillRootPath;
+        configuration["SkillStorage:MaxUploadBytes"] = "1024";
         services.ReplaceConfiguration(configuration);
 
         await services.AddApplicationAsync<CikeOSTestsModule>();
@@ -55,6 +61,11 @@ public sealed class CikeOSTestHost : IAsyncLifetime
     {
         await _serviceProvider.DisposeAsync();
         _connection.Dispose();
+
+        if (Directory.Exists(_skillRootPath))
+        {
+            Directory.Delete(_skillRootPath, recursive: true);
+        }
     }
 
     public IServiceScope CreateScope() => _serviceProvider.CreateScope();

@@ -1,4 +1,4 @@
-namespace Cike.OS.Domain.ValueObjects;
+namespace Cike.OS.Domain.Shared.ValueObjects;
 
 public class ToolParameterDefinition
 {

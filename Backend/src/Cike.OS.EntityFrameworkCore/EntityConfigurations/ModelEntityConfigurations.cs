@@ -1,8 +1,8 @@
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Shared.Json;
 using Cike.OS.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Text.Json;
 
 namespace Cike.OS.EntityFrameworkCore.EntityConfigurations;
 
@@ -20,8 +20,8 @@ public class ModelEntityConfiguration : IEntityTypeConfiguration<ModelEntity>
 
         builder.Property(x => x.TagIds)
             .HasConversion(
-                tagIds => JsonSerializer.Serialize(tagIds, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<List<long>>(json, (JsonSerializerOptions?)null) ?? new List<long>())
+                tagIds => JsonHelper.Serialize(tagIds),
+                json => JsonHelper.Deserialize<List<long>>(json) ?? new List<long>())
             .HasColumnType("json");
 
         builder.HasIndex(x => x.TenantId);
@@ -40,17 +40,11 @@ public class ModelProviderEntityConfiguration : IEntityTypeConfiguration<ModelPr
 
         builder.Property(x => x.Setting)
             .HasConversion(
-                setting => JsonSerializer.Serialize(setting, (JsonSerializerOptions?)null),
-                json => DeserializeModelProviderSetting(json))
+                setting => JsonHelper.Serialize(setting),
+                json => JsonColumn.Required<ModelProviderSetting>(json))
             .HasColumnType("json");
 
         builder.HasIndex(x => x.TenantId);
-    }
-
-    private static ModelProviderSetting DeserializeModelProviderSetting(string json)
-    {
-        return JsonSerializer.Deserialize<ModelProviderSetting>(json, (JsonSerializerOptions?)null)
-            ?? throw new InvalidOperationException("Model provider setting JSON is invalid.");
     }
 }
 

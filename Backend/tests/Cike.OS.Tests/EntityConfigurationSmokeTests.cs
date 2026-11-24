@@ -21,6 +21,19 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
+    public void Tool_DerivedQueryProperties_AreNotMappedByConvention()
+    {
+        // IsSkill / SkillPackageDirectory 是聚合上的查询属性（只读、无后备字段），EF 按约定不映射；
+        // 一旦有人给它们加 setter 或引入了批量映射约定，这里会先报出来，避免悄悄多出两列
+        using var scope = _host.CreateScope();
+        var entityType = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>().Model.FindEntityType(typeof(Tool))!;
+
+        Assert.Null(entityType.FindProperty(nameof(Tool.IsSkill)));
+        Assert.Null(entityType.FindProperty(nameof(Tool.SkillPackageDirectory)));
+        Assert.NotNull(entityType.FindProperty(nameof(Tool.Type)));
+    }
+
+    [Fact]
     public async Task Agent_Domain_RoundTrip()
     {
         long agentId;
@@ -281,38 +294,21 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
-            var category = new ToolPackageCategory { Name = "生产力" };
+            var category = ToolPackageCategory.Create("生产力");
             dbContext.Add(category);
             await dbContext.SaveChangesAsync();
 
-            var package = new ToolPackage
-            {
-                Code = "smoke-package",
-                Name = "Smoke package",
-                Description = "Tool package round trip",
-                Icon = "icon",
-                Readme = "# readme",
-                ToolPackageCategoryId = category.Id,
-                Status = ToolPackageStatus.Published,
-            };
+            var package = ToolPackage.Create(
+                "smoke-package", "Smoke package", "Tool package round trip", "icon", "# readme", category.Id, ToolPackageStatus.Published);
             dbContext.Add(package);
             await dbContext.SaveChangesAsync();
 
-            var tool = new Tool
-            {
-                Code = "smoke-tool",
-                Name = "Smoke tool",
-                Description = "Tool round trip",
-                Type = ToolType.Mcp,
-                ToolPackageId = package.Id,
-                Setting = new HttpMcpToolSetting
-                {
-                    Name = "Smoke MCP",
-                    Endpoint = "http://localhost:5000/mcp",
-                    ConnectionTimeout = TimeSpan.FromSeconds(15),
-                    MaxReconnectionAttempts = 3,
-                },
-                Parameters =
+            var tool = Tool.Create(
+                "smoke-tool",
+                "Smoke tool",
+                "Tool round trip",
+                ToolType.HttpMcp,
+                package.Id,
                 [
                     new ToolParameterDefinition
                     {
@@ -322,7 +318,13 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
                         Sensitive = true,
                     },
                 ],
-            };
+                new HttpMcpToolSetting
+                {
+                    Name = "Smoke MCP",
+                    Endpoint = "http://localhost:5000/mcp",
+                    ConnectionTimeout = TimeSpan.FromSeconds(15),
+                    MaxReconnectionAttempts = 3,
+                });
             dbContext.Add(tool);
             await dbContext.SaveChangesAsync();
             toolId = tool.Id;
@@ -333,7 +335,7 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
             var tool = await dbContext.Tools.AsNoTracking().SingleAsync(x => x.Id == toolId);
-            Assert.Equal(ToolType.Mcp, tool.Type);
+            Assert.Equal(ToolType.HttpMcp, tool.Type);
 
             var setting = Assert.IsType<HttpMcpToolSetting>(tool.Setting);
             Assert.Equal("Smoke MCP", setting.Name);

@@ -1,5 +1,5 @@
 using Cike.OS.Domain.Services;
-using Cike.OS.Domain.ValueObjects;
+using Cike.OS.Domain.Shared.ValueObjects;
 using Xunit;
 
 namespace Cike.OS.Tests;

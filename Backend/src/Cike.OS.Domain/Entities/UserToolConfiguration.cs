@@ -1,5 +1,3 @@
-using Cike.OS.Domain.ValueObjects;
-
 namespace Cike.OS.Domain.Entities;
 
 public class UserToolConfiguration : FullAuditedAggregateRoot<long>, IMultiTenant

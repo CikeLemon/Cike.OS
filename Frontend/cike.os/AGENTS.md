@@ -21,25 +21,30 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm gen:api          # 从后端 swagger.json 重新生成 API 层（需后端 localhost:5209 在跑）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具表单校验、过滤/格式化）
+pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
+# 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
 
-新增依赖用 `pnpm add` / `pnpm add -D`；新增 shadcn-vue 组件见下方专节。**目前没有 `lint` 和 `test` 脚本。**
+新增依赖用 `pnpm add` / `pnpm add -D`；新增 shadcn-vue 组件见下方专节。**目前没有 `lint` 脚本。**
 
 ## 目录结构
 
 ```
 src/
 ├─ main.ts              # 应用入口（createApp + mount；含生成 client 的 baseUrl 配置）
-├─ App.vue              # 根组件
+├─ App.vue              # 根组件（RouterView + Toaster）
 ├─ style.css            # Tailwind v4 入口 + 主题变量（@theme / @layer base）
 ├─ api/                 # API 层生成物（@hey-api/openapi-ts，pnpm gen:api 重新生成）——勿手改：
-│                       #   sdk.gen.ts（每个端点一个类型化函数）/ types.gen.ts（DTO 类型）/ client.gen.ts（HTTP client）等
+│                       #   sdk.gen.ts（每个端点一个类型化函数，从 '@/api' 导入）/ types.gen.ts（DTO 类型，枚举为数字字面量、long 为 string）
+│                       #   client.gen.ts（`client` 实例，从 '@/api/client.gen' 导入）
 ├─ components/          # 业务组件（自己写）
-│  ├─ HelloWorld.vue    # 脚手架遗留示例
-│  └─ ui/               # shadcn-vue 生成物——勿手改，见专节（当前尚未 add 任何组件）
+│  ├─ shared/           # 跨模块复用的业务包装（DeleteConfirmDialog、TablePagination）
+│  ├─ tool-packages/ tool-package-categories/ tools/   # 按模块分目录；*.test.ts 旁边放纯函数测试
+│  └─ ui/               # shadcn-vue 生成物——勿手改，见专节
 ├─ lib/
-│  ├─ errors.ts         # getErrorMessage()：从 400 响应体提取中文错误文案
+│  ├─ errors.ts         # getErrorMessage(result)：从生成 client 的失败结果提取中文文案（字串 / ProblemDetails.errors / 404 / 5xx）
+│  ├─ tool-status.ts tool-type.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
 │  └─ utils.ts          # cn()：clsx + tailwind-merge 合并类名
 ├─ assets/              # 图片等静态资源
 └─ composables/         # 组合式函数（约定目录，按需惰性创建）
@@ -62,7 +67,11 @@ if (error) toast.error(getErrorMessage(error))
 
 - 后端契约变更后跑 `pnpm gen:api` 重新生成，不手改 `src/api/` 生成物。
 - 函数名由后端路由拼接而来（后端 swagger 无 operationId），如 `putApiV1PermissionsById`。
-- dev 环境 `VITE_API_BASE_URL` 留空走 Vite proxy，生产由环境变量提供基地址（`main.ts` 里 `client.setConfig`）。
+- 后端 API 地址一律来自 `.env.[mode]`，**禁止在代码或配置里硬编码**；只有 `development` / `production` 两套环境，没有测试环境：
+  - `VITE_API_BASE_URL`：浏览器直连的基地址（`main.ts` 里 `client.setConfig`）；开发态留空 = 同源，由 Vite 代理 `/api`
+  - `VITE_API_PROXY_TARGET`：仅开发态，Vite 代理目标（`vite.config.ts` 用 `loadEnv` 读取）；也是 `gen:api` 默认的 swagger 来源
+  - `.env.development`（`pnpm dev`）/ `.env.production`（`pnpm build`，Vite 构建默认就是 production 模式，产物直接指向生产地址）入库；本机覆盖用 `.env.local` / `.env.[mode].local`（已 gitignore）
+  - `gen:api` 选环境：默认读 `.env.development`；`OPENAPI_MODE=production pnpm gen:api` 从生产 swagger 生成；`OPENAPI_INPUT=<完整地址>` 临时指定
 
 `components.json` 里的路径别名：`@/components`、`@/components/ui`、`@/lib`、`@/lib/utils`、`@/composables`。
 
@@ -106,9 +115,9 @@ pnpm dlx shadcn-vue@latest add <component>   # 例：add button
 
 ## 尚未搭建（不要臆测存在，需引入前先问用户）
 
-- **路由**：未安装 vue-router，目前只有单页 `App.vue`。
+- **路由**：已安装 vue-router（路由表 `src/router/routes.ts`，页面 `src/pages/`，布局 `src/layouts/`）。
 - **状态管理**：未安装 Pinia。
-- **测试**：无单元测试 / e2e 框架，无 `test` 脚本。
+- **测试**：已有 vitest（`pnpm test`），但只覆盖抽出的纯函数接缝，无组件测试 / e2e。
 - **Lint / 格式化**：未配置 ESLint / Prettier，无 `lint` 脚本。
 
 引入以上任何一项（即新增任何 pnpm 依赖）**前必须先询问用户**，不要擅自安装或搭建脚手架。将来引入时，目录命名建议对齐社区惯例（`pages/`（或 `views/`）、`layouts/`、`router/`、`stores/`、`composables/`），但这只是约定，不代表当前已存在。

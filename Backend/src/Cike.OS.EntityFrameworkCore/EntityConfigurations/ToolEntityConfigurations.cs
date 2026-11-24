@@ -1,9 +1,8 @@
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Shared.Json;
 using Cike.OS.Domain.Shared.ValueObjects;
-using Cike.OS.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Text.Json;
 
 namespace Cike.OS.EntityFrameworkCore.EntityConfigurations;
 
@@ -24,24 +23,19 @@ public class ToolEntityConfiguration : IEntityTypeConfiguration<Tool>
 
         builder.Property(x => x.Parameters)
             .HasConversion(
-                parameters => JsonSerializer.Serialize(parameters, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<List<ToolParameterDefinition>>(json, (JsonSerializerOptions?)null) ?? new List<ToolParameterDefinition>())
+                parameters => JsonHelper.Serialize(parameters),
+                json => JsonHelper.Deserialize<List<ToolParameterDefinition>>(json) ?? new List<ToolParameterDefinition>())
             .HasColumnType("json");
 
+        // 多态值对象：JsonHelper.Options 允许判别键 type 不在首位（MySQL json 列会重排成员）
         builder.Property(x => x.Setting)
             .HasConversion(
-                setting => JsonSerializer.Serialize(setting, (JsonSerializerOptions?)null),
-                json => DeserializeToolSetting(json))
+                setting => JsonHelper.Serialize(setting),
+                json => JsonColumn.Required<ToolSetting>(json))
             .HasColumnType("json");
 
         builder.HasIndex(x => x.TenantId);
         builder.HasIndex(x => x.ToolPackageId);
-    }
-
-    private static ToolSetting DeserializeToolSetting(string json)
-    {
-        return JsonSerializer.Deserialize<ToolSetting>(json, (JsonSerializerOptions?)null)
-            ?? throw new InvalidOperationException("Tool setting JSON is invalid.");
     }
 }
 
@@ -92,8 +86,8 @@ public class UserToolConfigurationEntityConfiguration : IEntityTypeConfiguration
 
         builder.Property(x => x.Values)
             .HasConversion(
-                values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
-                json => JsonSerializer.Deserialize<Dictionary<string, string>>(json, (JsonSerializerOptions?)null) ?? new Dictionary<string, string>())
+                values => JsonHelper.Serialize(values),
+                json => JsonHelper.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>())
             .HasColumnType("json");
 
         builder.HasIndex(x => x.TenantId);

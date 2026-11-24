@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import { Bot, Circle, Cpu, MessageSquare, Settings, Tag, Wrench } from '@lucide/vue'
+import { Circle } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import {
   Sidebar,
@@ -17,20 +16,12 @@ import { pageRoutes } from '@/router/routes'
 import { deriveNavItems } from './nav-items'
 
 const route = useRoute()
+// 导航项（标签、路径、图标）全部由路由表推导，这里不维护任何静态映射
 const navItems = deriveNavItems(pageRoutes)
 
-// 图标是视图层关注点，按模块路径映射；路由表只管标题与路径
-const moduleIcons: Record<string, Component> = {
-  '/conversations': MessageSquare,
-  '/agents': Bot,
-  '/models': Cpu,
-  '/tools': Wrench,
-  '/tags': Tag,
-  '/settings': Settings,
-}
-
-function iconFor(path: string): Component {
-  return moduleIcons[path] ?? Circle
+// 详情页（/tool-packages/:id）归属其列表菜单，按路径前缀判定激活
+function isActive(path: string): boolean {
+  return route.path === path || route.path.startsWith(`${path}/`)
 }
 </script>
 
@@ -55,11 +46,11 @@ function iconFor(path: string): Component {
             <SidebarMenuItem v-for="item in navItems" :key="item.path">
               <SidebarMenuButton
                 :tooltip="item.label"
-                :is-active="route.path === item.path"
+                :is-active="isActive(item.path)"
                 :as-child="true"
               >
                 <RouterLink :to="item.path">
-                  <component :is="iconFor(item.path)" />
+                  <component :is="item.icon ?? Circle" />
                   <span>{{ item.label }}</span>
                 </RouterLink>
               </SidebarMenuButton>

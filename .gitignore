@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# 本地技能包存储（Backend appsettings SkillStorage:RootPath 的开发默认位置）
+Backend/src/Cike.OS.Service.Open/data/
