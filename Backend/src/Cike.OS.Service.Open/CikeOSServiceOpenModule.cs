@@ -11,6 +11,8 @@ using Cike.OS.Service.Open.Swagger;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.OpenApi;
+using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace Cike.OS.Service.Open;
 
@@ -52,6 +54,15 @@ public class CikeOSServiceOpenModule : CikeModule
                 }
 
                 return null;
+            });
+
+            // mapping 条目只在判别值 selector 返回非 null 时生成（Swashbuckle 默认 selector 返回 null），反射读 [JsonDerivedType] 的判别值
+            options.SelectDiscriminatorValueUsing(type =>
+            {
+                var baseType = JsonPolymorphicHelper.GetBaseType(type, out _);
+                return baseType?.GetCustomAttributes<JsonDerivedTypeAttribute>(false)
+                    .FirstOrDefault(attr => attr.DerivedType == type)
+                    ?.TypeDiscriminator?.ToString();
             });
         });
 
