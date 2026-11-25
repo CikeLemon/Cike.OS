@@ -24,14 +24,14 @@ export const get = <ThrowOnError extends boolean = false>(options?: Options<GetD
     ...options
 });
 
-export const postApiV1SkillPackagesUpload = <ThrowOnError extends boolean = false>(options: Options<PostApiV1SkillPackagesUploadData, ThrowOnError>): RequestResult<PostApiV1SkillPackagesUploadResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1SkillPackagesUploadResponses, unknown, ThrowOnError>({
+export const postApiV1SkillPackagesUpload = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1SkillPackagesUploadData, ThrowOnError>): RequestResult<PostApiV1SkillPackagesUploadResponses, unknown, ThrowOnError> => (options?.client ?? client).post<PostApiV1SkillPackagesUploadResponses, unknown, ThrowOnError>({
     ...formDataBodySerializer,
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/SkillPackages/Upload',
     ...options,
     headers: {
         'Content-Type': null,
-        ...options.headers
+        ...options?.headers
     }
 });
 

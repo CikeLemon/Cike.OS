@@ -6,14 +6,11 @@ using Cike.Core.Modularity;
 using Cike.FluentValidation;
 using Cike.OS.Application;
 using Cike.OS.Application.SkillPackages;
-using Cike.OS.Domain.Shared.Enums;
-using Cike.OS.Domain.Shared.ValueObjects;
 using Cike.OS.EntityFrameworkCore;
 using Cike.OS.Service.Open.Swagger;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace Cike.OS.Service.Open;
 
@@ -42,24 +39,19 @@ public class CikeOSServiceOpenModule : CikeModule
             options.SerializerOptions.AllowOutOfOrderMetadataProperties = true;
         });
 
-        context.Services.AddCikeSwagger("Cike.Auth", options =>
+        context.Services.AddCikeSwagger("Cike.OS", options =>
         {
-            options.MapType<long>(() => new OpenApiSchema { Type = "string", Format = "int64" });
-            options.OperationFilter<SwaggerFormFileOperationFilter>();
-            options.SchemaFilter<ToolSettingDiscriminatorSchemaFilter>();
-
-            // Swashbuckle 不识别 System.Text.Json 的 [JsonPolymorphic]，显式声明工具设置的多态子类型与判别键（判别值 = ToolType 数值）
-            options.UseOneOfForPolymorphism();
-            options.SelectSubTypesUsing(type => type == typeof(ToolSetting)
-                ? [typeof(SkillToolSetting), typeof(HttpMcpToolSetting), typeof(StdioMcpToolSetting)]
-                : []);
-            options.SelectDiscriminatorNameUsing(_ => "type");
-            options.SelectDiscriminatorValueUsing(type => type switch
+            options.MapType<long>(() => new OpenApiSchema { Type = JsonSchemaType.String, Format = "int64" });
+            options.SchemaFilter<JsonPolymorphicDiscriminatorSchemaFilter>();
+            options.SelectDiscriminatorNameUsing(type =>
             {
-                var t when t == typeof(SkillToolSetting) => ((int)ToolType.Skill).ToString(),
-                var t when t == typeof(HttpMcpToolSetting) => ((int)ToolType.HttpMcp).ToString(),
-                var t when t == typeof(StdioMcpToolSetting) => ((int)ToolType.StdioMcp).ToString(),
-                _ => null,
+                var baseType = JsonPolymorphicHelper.GetBaseType(type, out var attr);
+                if (baseType != null)
+                {
+                    return attr!.TypeDiscriminatorPropertyName ?? "$type";
+                }
+
+                return null;
             });
         });
 
@@ -78,7 +70,7 @@ public class CikeOSServiceOpenModule : CikeModule
         context.GetApplicationBuilder().UseMultiTenant();
 
 #if DEBUG
-        context.GetApplicationBuilder().UseCikeSwaggerUI("Cike.Auth");
+        context.GetApplicationBuilder().UseCikeSwaggerUI("Cike.OS");
 #endif
     }
 }

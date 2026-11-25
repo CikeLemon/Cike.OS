@@ -43,7 +43,7 @@ export type HttpMcpToolSetting = Omit<ToolSetting, 'type'> & {
 };
 
 /**
- * {"AutoDetect":0,"StreamableHttp":1,"Sse":2}
+ * {"AutoDetect":0, "StreamableHttp":1, "Sse":2}
  */
 export type HttpTransportMode = 0 | 1 | 2;
 
@@ -116,7 +116,7 @@ export type ToolPackageDtoPagedResultDto = {
 };
 
 /**
- * {"Draft":1,"Published":2,"Offline":3}
+ * {"Draft":1, "Published":2, "Offline":3}
  */
 export type ToolPackageStatus = 1 | 2 | 3;
 
@@ -133,7 +133,7 @@ export type ToolSetting = {
 };
 
 /**
- * {"Skill":1,"HttpMcp":2,"StdioMcp":3}
+ * {"Skill":1, "HttpMcp":2, "StdioMcp":3}
  */
 export type ToolType = 1 | 2 | 3;
 
@@ -143,7 +143,7 @@ export type ToolValue = {
 };
 
 /**
- * {"Literal":1,"ParameterReference":2}
+ * {"Literal":1, "ParameterReference":2}
  */
 export type ToolValueType = 1 | 2;
 
@@ -203,10 +203,7 @@ export type GetResponses = {
 export type GetResponse = GetResponses[keyof GetResponses];
 
 export type PostApiV1SkillPackagesUploadData = {
-    /**
-     * 技能包 zip 压缩包
-     */
-    body: {
+    body?: {
         file: Blob | File;
     };
     path?: never;
@@ -318,6 +315,9 @@ export type GetApiV1ToolPackagesPagedListData = {
     query: {
         Keyword?: string;
         ToolPackageCategoryId?: string;
+        /**
+         * {"Draft":1, "Published":2, "Offline":3}
+         */
         Status?: ToolPackageStatus;
         Page: number;
         PageSize: number;
