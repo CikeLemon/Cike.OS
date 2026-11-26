@@ -117,13 +117,12 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
             Status = ToolPackageStatus.Published,
             Page = 1,
             PageSize = 10,
-            Sorting = "Id; DROP TABLE", // 前端传入的排序必须被忽略
+            Sorting = "Id desc", // 前端传入的 Dynamic LINQ 排序，后端透传
         });
         await _host.PublishAsync(query);
 
         Assert.Equal(2, query.Result!.Total);
-        Assert.Contains(query.Result.Items, x => x.Name == $"搜索-{marker}-甲");
-        Assert.Contains(query.Result.Items, x => x.Name == $"无关-{marker}");
+        Assert.Equal([$"无关-{marker}", $"搜索-{marker}-甲"], query.Result.Items.Select(x => x.Name).ToList());
         Assert.DoesNotContain(query.Result.Items, x => x.Name == $"搜索-{marker}-乙");
         Assert.All(query.Result.Items, x => Assert.Equal(ToolPackageStatus.Published, x.Status));
         Assert.All(query.Result.Items, x => Assert.StartsWith("分类-", x.ToolPackageCategoryName));

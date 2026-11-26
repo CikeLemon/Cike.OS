@@ -138,7 +138,7 @@ async function submit() {
         <!-- 基本信息 -->
         <section class="grid gap-3">
           <h3 class="text-sm font-semibold">基本信息</h3>
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div class="grid gap-3 sm:grid-cols-2 sm:items-start">
             <div class="grid gap-1.5">
               <Label for="tool-code">编码 <span class="text-destructive">*</span></Label>
               <Input id="tool-code" v-model="form.code" placeholder="包内唯一，如：search" :aria-invalid="Boolean(errors.code)" autocomplete="off" />

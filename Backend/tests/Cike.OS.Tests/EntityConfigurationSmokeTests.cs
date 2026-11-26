@@ -237,6 +237,16 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
+            var tag = new Tag { Key = "vision", Name = "视觉" };
+            dbContext.Add(tag);
+            await dbContext.SaveChangesAsync();
+
+            var model = ModelEntity.Create("gpt-4o", "GPT-4o", "OpenAI flagship model", [tag.Id]);
+            dbContext.Add(model);
+            await dbContext.SaveChangesAsync();
+            modelId = model.Id;
+
+            // 映射是聚合内子实体：只能经聚合根加入，与聚合根一起落库
             var provider = new ModelProvider
             {
                 Name = "Smoke provider",
@@ -248,31 +258,23 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
                     Organization = "org-1",
                 },
             };
+            provider.SyncMappings([(modelId, 10, "gpt-4o-2024-11-20")]);
             dbContext.Add(provider);
             await dbContext.SaveChangesAsync();
             providerId = provider.Id;
 
-            var tag = new Tag { Key = "vision", Name = "视觉" };
-            dbContext.Add(tag);
+            // 既有聚合根新增子实体：外键由 EF 关系修正回填
+            provider.SyncMappings([(modelId, 10, "gpt-4o-2024-11-20"), (999, 5, null)]);
             await dbContext.SaveChangesAsync();
-
-            var model = new ModelEntity
-            {
-                ModelProviderId = providerId,
-                Name = "gpt-4o",
-                DisplayName = "GPT-4o",
-                TagIds = [tag.Id],
-            };
-            dbContext.Add(model);
-            await dbContext.SaveChangesAsync();
-            modelId = model.Id;
         }
 
         using (var scope = _host.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
-            var provider = await dbContext.ModelProviders.AsNoTracking().SingleAsync(x => x.Id == providerId);
+            var provider = await dbContext.ModelProviders.AsNoTracking()
+                .Include(x => x.Mappings)
+                .SingleAsync(x => x.Id == providerId);
             var setting = Assert.IsType<OpenAIModelProviderSetting>(provider.Setting);
             Assert.Equal(ModelProviderType.OpenAI, setting.Type);
             Assert.Equal("https://api.openai.com/v1", setting.BaseUrl);
@@ -281,7 +283,14 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
 
             var model = await dbContext.Models.AsNoTracking().SingleAsync(x => x.Id == modelId);
             Assert.Equal("GPT-4o", model.DisplayName);
+            Assert.Equal("OpenAI flagship model", model.Description);
             Assert.Single(model.TagIds);
+
+            Assert.Equal(2, provider.Mappings.Count);
+            Assert.All(provider.Mappings, x => Assert.Equal(providerId, x.ModelProviderId));
+            var mapping = provider.Mappings.Single(x => x.ModelId == modelId);
+            Assert.Equal(10, mapping.Priority);
+            Assert.Equal("gpt-4o-2024-11-20", mapping.ProviderModelName);
         }
     }
 

@@ -4,6 +4,24 @@ export type ClientOptions = {
     baseUrl: 'http://127.0.0.1:5182' | (string & {});
 };
 
+export type AnthropicModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
+    version?: string | null;
+    type: 2;
+};
+
+export type CreateModelDto = {
+    name?: string | null;
+    displayName?: string | null;
+    description?: string | null;
+    tagIds?: Array<string> | null;
+};
+
+export type CreateModelProviderDto = {
+    name?: string | null;
+    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
+    mappings?: Array<SaveModelProviderMappingDto> | null;
+};
+
 export type CreateToolDto = {
     code?: string | null;
     name?: string | null;
@@ -47,6 +65,58 @@ export type HttpMcpToolSetting = Omit<ToolSetting, 'type'> & {
  */
 export type HttpTransportMode = 0 | 1 | 2;
 
+export type ModelDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    name?: string | null;
+    displayName?: string | null;
+    description?: string | null;
+    tagIds?: Array<string> | null;
+};
+
+export type ModelDtoPagedResultDto = {
+    total?: string;
+    items?: Array<ModelDto> | null;
+};
+
+export type ModelProviderDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    name?: string | null;
+    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
+    mappings?: Array<ModelProviderMappingDto> | null;
+};
+
+export type ModelProviderMappingDto = {
+    modelId?: string;
+    modelDisplayName?: string | null;
+    priority?: number;
+    providerModelName?: string | null;
+};
+
+export type ModelProviderSetting = {
+    type: 1 | 2;
+    baseUrl?: string | null;
+    apiKey?: string | null;
+};
+
+export type OpenAiModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
+    organization?: string | null;
+    type: 1;
+};
+
+export type SaveModelProviderMappingDto = {
+    modelId?: string;
+    priority?: number;
+    providerModelName?: string | null;
+};
+
 export type SaveUserToolConfigurationDto = {
     toolId?: string;
     values?: {
@@ -68,6 +138,16 @@ export type StdioMcpToolSetting = Omit<ToolSetting, 'type'> & {
         [key: string]: ToolValue;
     } | null;
     type: 3;
+};
+
+export type TagDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    key?: string | null;
+    name?: string | null;
 };
 
 export type ToolDto = {
@@ -147,6 +227,18 @@ export type ToolValue = {
  */
 export type ToolValueType = 1 | 2;
 
+export type UpdateModelDto = {
+    displayName?: string | null;
+    description?: string | null;
+    tagIds?: Array<string> | null;
+};
+
+export type UpdateModelProviderDto = {
+    name?: string | null;
+    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
+    mappings?: Array<SaveModelProviderMappingDto> | null;
+};
+
 export type UpdateToolDto = {
     code?: string | null;
     name?: string | null;
@@ -202,6 +294,189 @@ export type GetResponses = {
 
 export type GetResponse = GetResponses[keyof GetResponses];
 
+export type GetApiV1ModelProvidersListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ModelProviders/List';
+};
+
+export type GetApiV1ModelProvidersListResponses = {
+    /**
+     * OK
+     */
+    200: Array<ModelProviderDto>;
+};
+
+export type GetApiV1ModelProvidersListResponse = GetApiV1ModelProvidersListResponses[keyof GetApiV1ModelProvidersListResponses];
+
+export type DeleteApiV1ModelProvidersByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}';
+};
+
+export type DeleteApiV1ModelProvidersByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ModelProvidersByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}';
+};
+
+export type GetApiV1ModelProvidersByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1ModelProvidersByIdResponses = {
+    /**
+     * OK
+     */
+    200: ModelProviderDto;
+};
+
+export type GetApiV1ModelProvidersByIdResponse = GetApiV1ModelProvidersByIdResponses[keyof GetApiV1ModelProvidersByIdResponses];
+
+export type PutApiV1ModelProvidersByIdData = {
+    body: UpdateModelProviderDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}';
+};
+
+export type PutApiV1ModelProvidersByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1ModelProvidersData = {
+    body: CreateModelProviderDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ModelProviders';
+};
+
+export type PostApiV1ModelProvidersResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1ModelProvidersResponse = PostApiV1ModelProvidersResponses[keyof PostApiV1ModelProvidersResponses];
+
+export type GetApiV1ModelsPagedListData = {
+    body?: never;
+    path?: never;
+    query: {
+        Keyword?: string;
+        Page: number;
+        PageSize: number;
+        Sorting?: string;
+    };
+    url: '/api/v1/Models/PagedList';
+};
+
+export type GetApiV1ModelsPagedListResponses = {
+    /**
+     * OK
+     */
+    200: ModelDtoPagedResultDto;
+};
+
+export type GetApiV1ModelsPagedListResponse = GetApiV1ModelsPagedListResponses[keyof GetApiV1ModelsPagedListResponses];
+
+export type DeleteApiV1ModelsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Models/{id}';
+};
+
+export type DeleteApiV1ModelsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ModelsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Models/{id}';
+};
+
+export type GetApiV1ModelsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1ModelsByIdResponses = {
+    /**
+     * OK
+     */
+    200: ModelDto;
+};
+
+export type GetApiV1ModelsByIdResponse = GetApiV1ModelsByIdResponses[keyof GetApiV1ModelsByIdResponses];
+
+export type PutApiV1ModelsByIdData = {
+    body: UpdateModelDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Models/{id}';
+};
+
+export type PutApiV1ModelsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1ModelsData = {
+    body: CreateModelDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Models';
+};
+
+export type PostApiV1ModelsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1ModelsResponse = PostApiV1ModelsResponses[keyof PostApiV1ModelsResponses];
+
 export type PostApiV1SkillPackagesUploadData = {
     body?: {
         file: Blob | File;
@@ -219,6 +494,22 @@ export type PostApiV1SkillPackagesUploadResponses = {
 };
 
 export type PostApiV1SkillPackagesUploadResponse = PostApiV1SkillPackagesUploadResponses[keyof PostApiV1SkillPackagesUploadResponses];
+
+export type GetApiV1TagsListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Tags/List';
+};
+
+export type GetApiV1TagsListResponses = {
+    /**
+     * OK
+     */
+    200: Array<TagDto>;
+};
+
+export type GetApiV1TagsListResponse = GetApiV1TagsListResponses[keyof GetApiV1TagsListResponses];
 
 export type GetApiV1ToolPackageCategoriesListData = {
     body?: never;

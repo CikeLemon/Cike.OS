@@ -22,13 +22,14 @@ describe('deriveNavItems', () => {
     ])
   })
 
-  it('真实路由表推导出七个模块，每个都带图标，详情页不进侧栏', () => {
+  it('真实路由表推导出八个模块，每个都带图标，详情页不进侧栏', () => {
     const items = deriveNavItems(pageRoutes)
 
     expect(items.map(({ label, path }) => ({ label, path }))).toEqual([
       { label: '对话', path: '/conversations' },
       { label: 'Agent', path: '/agents' },
       { label: '模型', path: '/models' },
+      { label: '模型提供方', path: '/model-providers' },
       { label: '工具包', path: '/tool-packages' },
       { label: '工具包分类', path: '/tool-package-categories' },
       { label: '标签', path: '/tags' },

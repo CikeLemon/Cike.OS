@@ -61,6 +61,7 @@ async function load() {
         Status: statusFilter.value === ALL ? undefined : (Number(statusFilter.value) as ToolPackageStatus),
         Page: page.value,
         PageSize: PAGE_SIZE,
+        Sorting: 'CreatedAt desc',
       },
     })
     if (result.error) {

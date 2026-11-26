@@ -24,8 +24,7 @@ public class ToolPackageQueryHandler(
 
         if (!string.IsNullOrWhiteSpace(dto.Keyword))
         {
-            var keyword = dto.Keyword.Trim();
-            predicate = x => x.Name.Contains(keyword) || x.Code.Contains(keyword);
+            predicate = x => x.Name.Contains(dto.Keyword) || x.Code.Contains(dto.Keyword);
         }
 
         if (dto.ToolPackageCategoryId is { } categoryId)
@@ -42,15 +41,8 @@ public class ToolPackageQueryHandler(
                 : predicate.And(x => x.Status == status);
         }
 
-        // 排序字段不接受前端输入：固定按创建时间倒序，避免动态 LINQ 注入面
-        var paging = new PagedAndSortedResultRequest
-        {
-            Page = dto.Page,
-            PageSize = dto.PageSize,
-            Sorting = "CreatedAt desc",
-        };
-
-        var (total, packages) = await toolPackageRepository.GetPagedListAsync(paging, predicate, cancellationToken);
+        // dto 本身就是分页排序请求：Sorting 由前端传入（Dynamic LINQ 字符串，支持多字段）
+        var (total, packages) = await toolPackageRepository.GetPagedListAsync(dto, predicate, cancellationToken);
 
         var categoryIds = packages.Select(x => x.ToolPackageCategoryId).Distinct().ToList();
         var categories = await categoryRepository.GetListAsync(x => categoryIds.Contains(x.Id), "Id asc", cancellationToken);

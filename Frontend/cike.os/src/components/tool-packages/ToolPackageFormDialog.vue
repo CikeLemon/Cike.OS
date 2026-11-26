@@ -106,7 +106,7 @@ async function submit() {
         <DialogDescription>工具包是工具的打包分发单元，创建成功后可在详情页添加工具。</DialogDescription>
       </DialogHeader>
       <form class="grid gap-4" @submit.prevent="submit">
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-2 sm:items-start">
           <div class="grid gap-2">
             <Label for="package-code">编码</Label>
             <Input id="package-code" v-model="form.code" placeholder="如：web-search" :aria-invalid="Boolean(errors.code)" autocomplete="off" />

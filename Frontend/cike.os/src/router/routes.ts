@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { Bot, Cpu, FolderOpen, MessageSquare, Package, Settings, Tag } from '@lucide/vue'
+import { Bot, Cpu, FolderOpen, MessageSquare, Package, Server, Settings, Tag } from '@lucide/vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -28,9 +28,16 @@ const pageRoutes: RouteRecordRaw[] = [
     meta: { title: 'Agent', nav: true, icon: Bot },
   },
   {
+    name: 'models',
     path: '/models',
     component: () => import('@/pages/ModelsPage.vue'),
     meta: { title: '模型', nav: true, icon: Cpu },
+  },
+  {
+    name: 'model-providers',
+    path: '/model-providers',
+    component: () => import('@/pages/ModelProvidersPage.vue'),
+    meta: { title: '模型提供方', nav: true, icon: Server },
   },
   {
     name: 'tool-packages',

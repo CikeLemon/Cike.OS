@@ -21,7 +21,7 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具表单校验、过滤/格式化）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 提供商表单校验、过滤 / 格式化）
 pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
 # 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
@@ -40,11 +40,11 @@ src/
 │                       #   client.gen.ts（`client` 实例，从 '@/api/client.gen' 导入）
 ├─ components/          # 业务组件（自己写）
 │  ├─ shared/           # 跨模块复用的业务包装（DeleteConfirmDialog、TablePagination）
-│  ├─ tool-packages/ tool-package-categories/ tools/   # 按模块分目录；*.test.ts 旁边放纯函数测试
+│  ├─ tool-packages/ tool-package-categories/ tools/ models/ model-providers/   # 按模块分目录；*.test.ts 旁边放纯函数测试
 │  └─ ui/               # shadcn-vue 生成物——勿手改，见专节
 ├─ lib/
 │  ├─ errors.ts         # getErrorMessage(result)：从生成 client 的失败结果提取中文文案（字串 / ProblemDetails.errors / 404 / 5xx）
-│  ├─ tool-status.ts tool-type.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
+│  ├─ tool-status.ts tool-type.ts model-provider-type.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
 │  └─ utils.ts          # cn()：clsx + tailwind-merge 合并类名
 ├─ assets/              # 图片等静态资源
 └─ composables/         # 组合式函数（约定目录，按需惰性创建）
@@ -102,6 +102,7 @@ if (error) toast.error(getErrorMessage(error))
 - **色板基调**：全局用 shadcn-vue `zinc` 中性灰（`style.css` 里的 OKLCH 变量，hue≈285、低 chroma），唯一高饱和色是 `destructive`（红，仅用于危险/删除操作）。不要引入这之外的色相或品牌色。
 - **一律用语义 token，禁止硬编码颜色**：组件里用 `bg-background` / `text-foreground` / `bg-primary` / `text-primary-foreground` / `bg-secondary` / `bg-muted` / `text-muted-foreground` / `bg-accent` / `border-border` / `bg-destructive` / `ring-ring` 等语义类；**禁止** `bg-[#1a1a1a]`、`text-zinc-500`、`bg-gray-100` 这类任意值或 Tailwind 原始调色板类——它们不跟随主题、暗色模式下会失真。图表用 `--chart-1..5`，侧栏用 `--sidebar-*` 令牌；只能用 `style.css` 已定义的语义 token，禁止臆造或引用未定义的 token。
 - **业务样式只管布局与组合**：业务组件的 class 只负责布局（间距 / 排列 / 尺寸），不改 `ui/` 组件的圆角 / 边框 / 阴影 / 配色等外观底座。
+- **并排多栏的表单行必须加 `items-start`**（如 `sm:grid-cols-2 sm:items-start`）：网格默认拉伸子项，一侧多出提示 / 报错文字时，另一侧的行会被均分撑高，标签和输入框整体下沉、与对侧错位。
 - **改色只改 `style.css`**：调色板/主题色统一在 `style.css` 的 `:root`（亮色）与 `.dark`（暗色）里改 CSS 变量，一处生效全局；不要在组件里散落颜色定义。
 - **暗色是一等公民**：新增任何自定义颜色变量，必须同时在 `:root` 和 `.dark` 给出对应值，避免只配亮色。
 
