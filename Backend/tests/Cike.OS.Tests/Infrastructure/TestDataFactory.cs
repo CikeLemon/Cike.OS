@@ -59,38 +59,52 @@ public static class TestDataFactory
         _ => new HttpMcpToolSetting { Name = "http", Endpoint = "http://localhost:5000/mcp" },
     };
 
-    public static ModelProviderSetting CreateProviderSetting(ModelProviderType type = ModelProviderType.OpenAI) => type switch
+    /// <summary>只建提供方（只有名称，没有任何接入点）。</summary>
+    public static async Task<long> CreateModelProviderAsync(CikeOSTestHost host, string name)
     {
-        ModelProviderType.Anthropic => new AnthropicModelProviderSetting
-        {
-            Type = ModelProviderType.Anthropic,
-            BaseUrl = "https://api.anthropic.com",
-            ApiKey = "ak-test",
-            Version = "2023-06-01",
-        },
-        _ => new OpenAIModelProviderSetting
-        {
-            Type = ModelProviderType.OpenAI,
-            BaseUrl = "https://api.openai.com/v1",
-            ApiKey = "sk-test",
-            Organization = "org-1",
-        },
-    };
-
-    public static async Task<long> CreateModelProviderAsync(
-        CikeOSTestHost host,
-        string name,
-        ModelProviderType type = ModelProviderType.OpenAI,
-        IReadOnlyList<SaveModelProviderMappingDto>? mappings = null)
-    {
-        var command = new CreateModelProviderCommand(new CreateModelProviderDto
-        {
-            Name = name,
-            Setting = CreateProviderSetting(type),
-            Mappings = mappings?.ToList() ?? [],
-        });
+        var command = new CreateModelProviderCommand(new CreateModelProviderDto { Name = name });
         await host.PublishAsync(command);
         return command.Id;
+    }
+
+    public static ModelProviderEndpointSetting CreateEndpointSetting(ModelProviderProtocol protocol) => protocol switch
+    {
+        ModelProviderProtocol.Anthropic => new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" },
+        _ => new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+    };
+
+    /// <summary>接入点的输入：Id 为 0 表示新建。</summary>
+    public static SaveModelProviderEndpointDto Endpoint(
+        string name = "官方",
+        ModelProviderProtocol protocol = ModelProviderProtocol.OpenAI,
+        long id = 0,
+        IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
+        string baseUrl = "https://api.openai.com/v1",
+        string apiKey = "sk-test",
+        ModelProviderEndpointSetting? setting = null) => new()
+    {
+        Id = id,
+        Name = name,
+        Protocol = protocol,
+        BaseUrl = baseUrl,
+        ApiKey = apiKey,
+        Setting = setting ?? CreateEndpointSetting(protocol),
+        Mappings = mappings?.ToList() ?? [],
+    };
+
+    /// <summary>用「名称 + 全部接入点」保存提供方（与界面同一个接口：提交的是期望的完整状态）。</summary>
+    public static Task SaveModelProviderAsync(CikeOSTestHost host, long providerId, string name, IReadOnlyList<SaveModelProviderEndpointDto> endpoints) =>
+        host.PublishAsync(new UpdateModelProviderCommand(providerId, new UpdateModelProviderDto
+        {
+            Name = name,
+            Endpoints = endpoints.ToList(),
+        }));
+
+    /// <summary>建一个「提供方 → 一个接入点 → 映射」的聚合，给只关心「模型是否被映射引用」的用例用。</summary>
+    public static async Task CreateProviderWithMappingsAsync(CikeOSTestHost host, string name, IReadOnlyList<SaveModelProviderMappingDto> mappings)
+    {
+        var providerId = await CreateModelProviderAsync(host, name);
+        await SaveModelProviderAsync(host, providerId, name, [Endpoint(mappings: mappings)]);
     }
 
     public static async Task<long> CreateModelAsync(CikeOSTestHost host, string name, string displayName, string? description = null, List<long>? tagIds = null)

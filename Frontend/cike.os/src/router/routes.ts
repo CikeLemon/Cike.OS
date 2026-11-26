@@ -40,6 +40,12 @@ const pageRoutes: RouteRecordRaw[] = [
     meta: { title: '模型提供方', nav: true, icon: Server },
   },
   {
+    name: 'model-provider-detail',
+    path: '/model-providers/:id',
+    component: () => import('@/pages/ModelProviderDetailPage.vue'),
+    meta: { title: '模型提供方详情' },
+  },
+  {
     name: 'tool-packages',
     path: '/tool-packages',
     component: () => import('@/pages/ToolPackagesPage.vue'),

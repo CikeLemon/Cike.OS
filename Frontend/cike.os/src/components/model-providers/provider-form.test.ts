@@ -1,91 +1,102 @@
 import { describe, expect, it } from 'vitest'
-import type { AnthropicModelProviderSetting, ModelProviderDto, OpenAiModelProviderSetting } from '@/api'
-import { emptyMappingRow, emptyProviderForm, providerFormFromDto, providerFormToBody, settingHasInput, validateProviderForm } from './provider-form'
+import type { ModelProviderDto, ModelProviderEndpointDto, SaveModelProviderEndpointDto } from '@/api'
+import {
+  emptyProviderForm,
+  endpointToSaveDto,
+  providerFormFromDto,
+  providerFormToBody,
+  providerUpdateBody,
+  removeEndpoint,
+  upsertEndpoint,
+  validateProviderForm,
+} from './provider-form'
 
-function validOpenAi() {
-  return { ...emptyProviderForm(), name: ' 智谱 ', baseUrl: ' https://api.example.com/v1 ', apiKey: ' sk-1 ', organization: ' org-1 ' }
-}
+const endpoints: ModelProviderEndpointDto[] = [
+  {
+    id: '1',
+    name: '官方 OpenAI',
+    protocol: 1,
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: 'sk-1',
+    setting: { type: 1, organization: 'org-1' },
+    mappings: [{ modelId: '7', modelDisplayName: 'GLM 5.3', priority: 10, providerModelName: '' }],
+  },
+  {
+    id: '2',
+    name: '官方 Anthropic',
+    protocol: 2,
+    baseUrl: 'https://api.anthropic.com',
+    apiKey: 'ak-1',
+    setting: { type: 2, version: '2023-06-01' },
+    mappings: [{ modelId: '7', priority: 5, providerModelName: 'glm-5.3' }],
+  },
+]
+
+const provider: ModelProviderDto = { id: '100', name: '智谱', endpoints }
 
 describe('provider-form', () => {
-  it('OpenAI 表单转 DTO：去首尾空白、type 为 1、只带组织标识，没有映射时为空数组', () => {
-    const body = providerFormToBody(validOpenAi())
-    expect(body.name).toBe('智谱')
-    expect(body.setting).toEqual({ type: 1, baseUrl: 'https://api.example.com/v1', apiKey: 'sk-1', organization: 'org-1' })
-    expect('version' in body.setting!).toBe(false)
-    expect(body.mappings).toEqual([])
+  it('提供方表单只有名称：新建请求体去首尾空白', () => {
+    expect(providerFormToBody({ name: ' 智谱 ' })).toEqual({ name: '智谱' })
   })
 
-  it('Anthropic 表单转 DTO：type 为 2、只带版本', () => {
-    const body = providerFormToBody({ ...emptyProviderForm(), type: 2, name: 'A', baseUrl: 'u', apiKey: 'k', version: '2023-06-01' })
-    expect(body.setting).toEqual({ type: 2, baseUrl: 'u', apiKey: 'k', version: '2023-06-01' })
+  it('校验：名称必填且不超过 128 个字符', () => {
+    expect(validateProviderForm({ name: '智谱' })).toEqual({})
+    expect(validateProviderForm(emptyProviderForm())).toEqual({ name: '请填写模型提供方名称。' })
+    expect(validateProviderForm({ name: 'x'.repeat(129) })).toEqual({ name: '模型提供方名称不能超过 128 个字符。' })
   })
 
-  it('映射转 DTO：分数转数字，空白提供商侧模型名归 null（表示回落模型名称）', () => {
-    const state = { ...validOpenAi(), mappings: [{ modelId: '7', priority: '30', providerModelName: ' zhipu/glm ' }, { ...emptyMappingRow(), modelId: '9' }] }
-    expect(providerFormToBody(state).mappings).toEqual([
-      { modelId: '7', priority: 30, providerModelName: 'zhipu/glm' },
-      { modelId: '9', priority: 0, providerModelName: null },
+  it('从 DTO 回填：只取名称，接入点不进表单', () => {
+    expect(providerFormFromDto({ name: 'P', endpoints: [] })).toEqual({ name: 'P' })
+    expect(providerFormFromDto(null)).toEqual({ name: '' })
+  })
+})
+
+describe('提供方整体提交（接入点随提供方保存）', () => {
+  it('没改的接入点原样转回输入：去掉界面用的模型显示名称，空字符串的提供商侧模型名归 null', () => {
+    expect(endpoints.map(endpointToSaveDto)).toEqual([
+      {
+        id: '1',
+        name: '官方 OpenAI',
+        protocol: 1,
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-1',
+        setting: { type: 1, organization: 'org-1' },
+        mappings: [{ modelId: '7', priority: 10, providerModelName: null }],
+      },
+      {
+        id: '2',
+        name: '官方 Anthropic',
+        protocol: 2,
+        baseUrl: 'https://api.anthropic.com',
+        apiKey: 'ak-1',
+        setting: { type: 2, version: '2023-06-01' },
+        mappings: [{ modelId: '7', priority: 5, providerModelName: 'glm-5.3' }],
+      },
     ])
   })
 
-  it('校验：公共字段必填，专属字段只看当前类型', () => {
-    expect(validateProviderForm(validOpenAi())).toEqual({})
-
-    const empty = emptyProviderForm()
-    expect(validateProviderForm(empty)).toEqual({
-      name: '请填写提供商名称。',
-      baseUrl: '请填写接入地址。',
-      apiKey: '请填写 API 密钥。',
-      organization: '请填写组织标识。',
-    })
-
-    // Anthropic 类型不要求组织标识，但要求版本
-    const anthropic = { ...validOpenAi(), type: 2 as const, organization: '', version: '' }
-    expect(validateProviderForm(anthropic)).toEqual({ version: '请填写 API 版本。' })
+  it('更新请求体 = 名称 + 全部接入点', () => {
+    const body = providerUpdateBody(provider.name, endpoints.map(endpointToSaveDto))
+    expect(body.name).toBe('智谱')
+    expect(body.endpoints).toHaveLength(2)
   })
 
-  it('校验：映射行必须选模型、分数必须是整数', () => {
-    const state = { ...validOpenAi(), mappings: [{ ...emptyMappingRow(), priority: 'abc', providerModelName: 'x'.repeat(129) }] }
-    expect(validateProviderForm(state)).toEqual({
-      'mappings.0.modelId': '请选择模型。',
-      'mappings.0.priority': '分数必须是整数。',
-      'mappings.0.providerModelName': '提供商侧模型名不能超过 128 个字符。',
-    })
+  it('新建接入点：其余原样保留，新的追加在后面', () => {
+    const created: SaveModelProviderEndpointDto = { name: '中转', protocol: 1, baseUrl: 'https://relay', apiKey: 'sk-2', setting: { type: 1 }, mappings: [] }
+    const result = upsertEndpoint(endpoints, created)
+    expect(result.map(x => x.id)).toEqual(['1', '2', undefined])
+    expect(result[2]).toBe(created)
   })
 
-  it('从 DTO 回填：按设置的判别键取对应专属字段，映射行按 DTO 顺序还原', () => {
-    const openAi: ModelProviderDto = {
-      name: 'P',
-      setting: { type: 1, baseUrl: 'u', apiKey: 'k', organization: 'o' } satisfies OpenAiModelProviderSetting,
-      mappings: [{ modelId: '7', priority: 30, providerModelName: 'zhipu/glm' }],
-    }
-    expect(providerFormFromDto(openAi)).toEqual({
-      name: 'P',
-      type: 1,
-      baseUrl: 'u',
-      apiKey: 'k',
-      organization: 'o',
-      version: '',
-      mappings: [{ modelId: '7', priority: '30', providerModelName: 'zhipu/glm' }],
-    })
-
-    const anthropic: ModelProviderDto = {
-      name: 'Q',
-      setting: { type: 2, baseUrl: 'u', apiKey: 'k', version: 'v' } satisfies AnthropicModelProviderSetting,
-    }
-    expect(providerFormFromDto(anthropic)).toEqual({
-      name: 'Q',
-      type: 2,
-      baseUrl: 'u',
-      apiKey: 'k',
-      organization: '',
-      version: 'v',
-      mappings: [],
-    })
+  it('编辑接入点：同 Id 的被替换，其余原样保留', () => {
+    const edited: SaveModelProviderEndpointDto = { id: '1', name: '官方（改）', protocol: 1, baseUrl: 'https://x', apiKey: 'k', setting: { type: 1 }, mappings: [] }
+    const result = upsertEndpoint(endpoints, edited)
+    expect(result.map(x => x.id)).toEqual(['2', '1'])
+    expect(result[1]).toBe(edited)
   })
 
-  it('设置区是否已有输入：只有名称和映射时为 false', () => {
-    expect(settingHasInput({ ...emptyProviderForm(), name: 'x', mappings: [{ ...emptyMappingRow(), modelId: '1' }] })).toBe(false)
-    expect(settingHasInput({ ...emptyProviderForm(), apiKey: 'k' })).toBe(true)
+  it('删除接入点：提交时不带它', () => {
+    expect(removeEndpoint(endpoints, '1').map(x => x.id)).toEqual(['2'])
+    expect(removeEndpoint(undefined, '1')).toEqual([])
   })
 })

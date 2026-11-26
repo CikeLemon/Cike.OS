@@ -1,13 +1,12 @@
-using Cike.OS.Domain.Shared.ValueObjects;
-
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
-/// <summary>提供商类型创建后不可变，设置子类型必须与现有类型一致，由 Handler 校验。</summary>
+/// <summary>
+/// 模型提供方的更新输入：名称 + 名下全部接入点（每个接入点带它的全部映射）。
+/// 提交的是期望的完整状态：没提交的接入点会被删除。
+/// </summary>
 public class UpdateModelProviderDto
 {
     public string Name { get; set; } = null!;
 
-    public ModelProviderSetting Setting { get; set; } = null!;
-
-    public List<SaveModelProviderMappingDto> Mappings { get; set; } = [];
+    public List<SaveModelProviderEndpointDto> Endpoints { get; set; } = [];
 }

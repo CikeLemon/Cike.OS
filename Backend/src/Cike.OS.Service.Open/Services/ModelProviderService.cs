@@ -12,7 +12,7 @@ namespace Cike.OS.Service.Open.Services;
 [AutoValidation]
 public class ModelProviderService : MinimalApiServiceBase
 {
-    public async Task<Ok<List<ModelProviderDto>>> GetListAsync(
+    public async Task<Ok<List<ModelProviderListDto>>> GetListAsync(
         [FromServices] ILocalEventBus eventBus,
         CancellationToken cancellationToken = default)
     {

@@ -38,10 +38,37 @@ public class ModelProviderMappingEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.ProviderModelName)
             .HasMaxLength(128);
 
-        // 提供商映射是 ModelProvider 聚合内的子实体，随聚合整体加载 / 软删
+        // 提供商映射是接入点下的子实体，随聚合整体加载 / 软删
         builder.HasIndex(x => x.TenantId);
 
+        builder.HasIndex(x => x.ModelProviderEndpointId);
+
         builder.HasIndex(x => x.ModelId);
+    }
+}
+
+public class ModelProviderEndpointEntityConfiguration : IEntityTypeConfiguration<ModelProviderEndpoint>
+{
+    public void Configure(EntityTypeBuilder<ModelProviderEndpoint> builder)
+    {
+        builder.Property(x => x.Id).ValueGeneratedNever();
+
+        builder.Property(x => x.Name)
+            .HasMaxLength(128);
+
+        builder.Property(x => x.Setting)
+            .HasConversion(
+                setting => JsonHelper.Serialize(setting),
+                json => JsonColumn.Required<ModelProviderEndpointSetting>(json))
+            .HasColumnType("json");
+
+        builder.HasMany(x => x.Mappings)
+            .WithOne()
+            .HasForeignKey(x => x.ModelProviderEndpointId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => x.TenantId);
+        builder.HasIndex(x => x.ModelProviderId);
     }
 }
 
@@ -54,13 +81,7 @@ public class ModelProviderEntityConfiguration : IEntityTypeConfiguration<ModelPr
         builder.Property(x => x.Name)
             .HasMaxLength(128);
 
-        builder.Property(x => x.Setting)
-            .HasConversion(
-                setting => JsonHelper.Serialize(setting),
-                json => JsonColumn.Required<ModelProviderSetting>(json))
-            .HasColumnType("json");
-
-        builder.HasMany(x => x.Mappings)
+        builder.HasMany(x => x.Endpoints)
             .WithOne()
             .HasForeignKey(x => x.ModelProviderId)
             .OnDelete(DeleteBehavior.Cascade);

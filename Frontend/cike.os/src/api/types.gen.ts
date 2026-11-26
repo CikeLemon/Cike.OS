@@ -4,7 +4,7 @@ export type ClientOptions = {
     baseUrl: 'http://127.0.0.1:5182' | (string & {});
 };
 
-export type AnthropicModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
+export type AnthropicModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
     version?: string | null;
     type: 2;
 };
@@ -18,8 +18,6 @@ export type CreateModelDto = {
 
 export type CreateModelProviderDto = {
     name?: string | null;
-    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
-    mappings?: Array<SaveModelProviderMappingDto> | null;
 };
 
 export type CreateToolDto = {
@@ -89,8 +87,30 @@ export type ModelProviderDto = {
     updatedAt?: string;
     updatedBy?: string;
     name?: string | null;
-    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
+    endpoints?: Array<ModelProviderEndpointDto> | null;
+};
+
+export type ModelProviderEndpointDto = {
+    id?: string;
+    name?: string | null;
+    protocol?: ModelProviderProtocol;
+    baseUrl?: string | null;
+    apiKey?: string | null;
+    setting?: OpenAiModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
     mappings?: Array<ModelProviderMappingDto> | null;
+};
+
+export type ModelProviderEndpointSetting = {
+    type: 1 | 2;
+};
+
+export type ModelProviderListDto = {
+    id?: string;
+    name?: string | null;
+    protocols?: Array<ModelProviderProtocol> | null;
+    modelDisplayNames?: Array<string> | null;
+    endpointCount?: number;
+    updatedAt?: string;
 };
 
 export type ModelProviderMappingDto = {
@@ -100,15 +120,24 @@ export type ModelProviderMappingDto = {
     providerModelName?: string | null;
 };
 
-export type ModelProviderSetting = {
-    type: 1 | 2;
-    baseUrl?: string | null;
-    apiKey?: string | null;
-};
+/**
+ * {"OpenAI":1, "Anthropic":2}
+ */
+export type ModelProviderProtocol = 1 | 2;
 
-export type OpenAiModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
+export type OpenAiModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
     organization?: string | null;
     type: 1;
+};
+
+export type SaveModelProviderEndpointDto = {
+    id?: string;
+    name?: string | null;
+    protocol?: ModelProviderProtocol;
+    baseUrl?: string | null;
+    apiKey?: string | null;
+    setting?: OpenAiModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
+    mappings?: Array<SaveModelProviderMappingDto> | null;
 };
 
 export type SaveModelProviderMappingDto = {
@@ -235,8 +264,7 @@ export type UpdateModelDto = {
 
 export type UpdateModelProviderDto = {
     name?: string | null;
-    setting?: OpenAiModelProviderSetting | AnthropicModelProviderSetting | null;
-    mappings?: Array<SaveModelProviderMappingDto> | null;
+    endpoints?: Array<SaveModelProviderEndpointDto> | null;
 };
 
 export type UpdateToolDto = {
@@ -305,7 +333,7 @@ export type GetApiV1ModelProvidersListResponses = {
     /**
      * OK
      */
-    200: Array<ModelProviderDto>;
+    200: Array<ModelProviderListDto>;
 };
 
 export type GetApiV1ModelProvidersListResponse = GetApiV1ModelProvidersListResponses[keyof GetApiV1ModelProvidersListResponses];

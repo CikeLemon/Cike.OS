@@ -648,10 +648,6 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
-                    b.Property<string>("Setting")
-                        .IsRequired()
-                        .HasColumnType("json");
-
                     b.Property<long>("TenantId")
                         .HasColumnType("bigint")
                         .HasColumnName("TenantId");
@@ -677,6 +673,75 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                     b.ToTable("ModelProviders");
                 });
 
+            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderEndpoint", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("CreatedAt")
+                        .HasComment("CreatedAt");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("CreatedBy")
+                        .HasComment("CreatedBy");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<long>("ModelProviderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int>("Protocol")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Setting")
+                        .IsRequired()
+                        .HasColumnType("json");
+
+                    b.Property<long>("TenantId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("TenantId");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("UpdatedBy")
+                        .HasComment("UpdatedBy");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("ModelProviderId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("ModelProviderEndpoints");
+                });
+
             modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderMapping", b =>
                 {
                     b.Property<long>("Id")
@@ -699,7 +764,7 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                     b.Property<long>("ModelId")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("ModelProviderId")
+                    b.Property<long>("ModelProviderEndpointId")
                         .HasColumnType("bigint");
 
                     b.Property<int>("Priority")
@@ -730,7 +795,7 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
 
                     b.HasIndex("ModelId");
 
-                    b.HasIndex("ModelProviderId");
+                    b.HasIndex("ModelProviderEndpointId");
 
                     b.HasIndex("TenantId");
 
@@ -1093,11 +1158,20 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderMapping", b =>
+            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderEndpoint", b =>
                 {
                     b.HasOne("Cike.OS.Domain.Entities.ModelProvider", null)
-                        .WithMany("Mappings")
+                        .WithMany("Endpoints")
                         .HasForeignKey("ModelProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderMapping", b =>
+                {
+                    b.HasOne("Cike.OS.Domain.Entities.ModelProviderEndpoint", null)
+                        .WithMany("Mappings")
+                        .HasForeignKey("ModelProviderEndpointId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1108,6 +1182,11 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                 });
 
             modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProvider", b =>
+                {
+                    b.Navigation("Endpoints");
+                });
+
+            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderEndpoint", b =>
                 {
                     b.Navigation("Mappings");
                 });

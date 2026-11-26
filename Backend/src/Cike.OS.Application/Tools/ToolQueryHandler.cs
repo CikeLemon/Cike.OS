@@ -3,6 +3,7 @@ using Cike.EventBus.Local;
 using Cike.OS.Application.Contracts.Tools.Dtos;
 using Cike.OS.Application.Tools.Queries;
 using Cike.OS.Domain.Entities;
+using Mapster;
 
 namespace Cike.OS.Application.Tools;
 
@@ -19,7 +20,8 @@ public class ToolQueryHandler(IReadOnlyRepository<Tool, long> toolRepository)
                 .OrderBy(x => x.Code),
             cancellationToken);
 
-        query.Result = tools.Select(ToDto).ToList();
+        // 参数定义与设置都是值对象，直接作为契约字段带出（两边声明类型相同，Mapster 原样引用）
+        query.Result = tools.Adapt<List<ToolDto>>();
     }
 
     [LocalEventHandler]
@@ -28,26 +30,6 @@ public class ToolQueryHandler(IReadOnlyRepository<Tool, long> toolRepository)
         using var _ = toolRepository.BeginAsNoTracking();
 
         var tool = await toolRepository.FindAsync(query.Id, cancellationToken);
-        query.Result = tool == null ? null : ToDto(tool);
-    }
-
-    /// <summary>参数定义与设置都是值对象，直接作为契约字段带出，不做二次映射。</summary>
-    private static ToolDto ToDto(Tool tool)
-    {
-        return new ToolDto
-        {
-            Id = tool.Id,
-            CreatedAt = tool.CreatedAt,
-            CreatedBy = tool.CreatedBy,
-            UpdatedAt = tool.UpdatedAt,
-            UpdatedBy = tool.UpdatedBy,
-            Code = tool.Code,
-            Name = tool.Name,
-            Description = tool.Description,
-            Type = tool.Type,
-            ToolPackageId = tool.ToolPackageId,
-            Parameters = [.. tool.Parameters],
-            Setting = tool.Setting,
-        };
+        query.Result = tool?.Adapt<ToolDto>();
     }
 }

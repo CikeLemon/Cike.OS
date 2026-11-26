@@ -1,6 +1,6 @@
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
-/// <summary>提供方映射的一条输入：映射随提供方整体提交，以 ModelId 为键（已映射的更新、新的新增、未提交的移除）。</summary>
+/// <summary>提供商映射的一条输入：随接入点、随提供方整体提交，以 ModelId 为键（已映射的更新、新的新增、未提交的移除）。</summary>
 public class SaveModelProviderMappingDto
 {
     public long ModelId { get; set; }

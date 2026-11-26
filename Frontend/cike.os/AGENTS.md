@@ -21,7 +21,7 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 提供商表单校验、过滤 / 格式化）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方 / 接入点表单校验、接入点随提供方整体提交的拼装、过滤 / 格式化）
 pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
 # 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
@@ -44,7 +44,7 @@ src/
 │  └─ ui/               # shadcn-vue 生成物——勿手改，见专节
 ├─ lib/
 │  ├─ errors.ts         # getErrorMessage(result)：从生成 client 的失败结果提取中文文案（字串 / ProblemDetails.errors / 404 / 5xx）
-│  ├─ tool-status.ts tool-type.ts model-provider-type.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
+│  ├─ tool-status.ts tool-type.ts model-provider-protocol.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
 │  └─ utils.ts          # cn()：clsx + tailwind-merge 合并类名
 ├─ assets/              # 图片等静态资源
 └─ composables/         # 组合式函数（约定目录，按需惰性创建）

@@ -3,67 +3,121 @@ using Cike.EventBus.Local;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Repositories;
+using Mapster;
 
 namespace Cike.OS.Application.ModelProviders;
 
+/// <summary>
+/// 模型提供方查询：接入点与映射随提供方一起带出，没有独立的查询接口。
+/// 详情要整棵聚合，走自定义仓储（连同两层子集合加载）；列表不加载聚合，只做投影。
+/// </summary>
 public class ModelProviderQueryHandler(
-    IReadOnlyRepository<ModelProvider, long> providerRepository,
+    IModelProviderRepository providerRepository,
+    IReadOnlyRepository<ModelProviderEndpoint, long> endpointRepository,
+    IReadOnlyRepository<ModelProviderMapping, long> mappingRepository,
     IReadOnlyRepository<ModelEntity, long> modelRepository)
 {
+    /// <summary>
+    /// 列表：界面只要名称 / 协议 / 支持的模型 / 接入点数 / 更新时间，所以不加载聚合——
+    /// 分四次投影查询，每次只取需要的列，全程不跟踪，再在内存里拼成每行。
+    /// </summary>
     [LocalEventHandler]
     public async Task GetListAsync(GetModelProviderListQuery query, CancellationToken cancellationToken = default)
     {
         using var _ = providerRepository.BeginAsNoTracking();
+        using var __ = endpointRepository.BeginAsNoTracking();
+        using var ___ = mappingRepository.BeginAsNoTracking();
+        using var ____ = modelRepository.BeginAsNoTracking();
 
         var providers = await providerRepository.ToListAsync(
-            providerRepository.WithDetails(x => x.Mappings).OrderBy(x => x.Name),
+            providerRepository.GetQueryable()
+                .OrderBy(x => x.Name)
+                .Select(x => new { x.Id, x.Name, x.UpdatedAt }),
             cancellationToken);
-        query.Result = await ToDtosAsync(providers, cancellationToken);
-    }
+        var providerIds = providers.Select(x => x.Id).ToList();
 
-    [LocalEventHandler]
-    public async Task GetAsync(GetModelProviderQuery query, CancellationToken cancellationToken = default)
-    {
-        using var _ = providerRepository.BeginAsNoTracking();
-
-        var providers = await providerRepository.ToListAsync(
-            providerRepository.WithDetails(x => x.Mappings).Where(x => x.Id == query.Id),
+        var endpoints = await endpointRepository.ToListAsync(
+            endpointRepository.GetQueryable()
+                .Where(x => providerIds.Contains(x.ModelProviderId))
+                .Select(x => new { x.Id, x.ModelProviderId, x.Protocol }),
             cancellationToken);
-        query.Result = providers.Count == 0 ? null : (await ToDtosAsync(providers, cancellationToken))[0];
-    }
+        var endpointIds = endpoints.Select(x => x.Id).ToList();
 
-    /// <summary>
-    /// 设置是值对象直接作为契约带出（同工具域先例），Mapster 无法实例化抽象的多态基类，故手写映射；
-    /// 映射里的模型名称一次性批量取回填，不逐行查库。
-    /// </summary>
-    private async Task<List<ModelProviderDto>> ToDtosAsync(List<ModelProvider> providers, CancellationToken cancellationToken)
-    {
-        var modelIds = providers.SelectMany(x => x.Mappings).Select(x => x.ModelId).Distinct().ToList();
+        var mappings = await mappingRepository.ToListAsync(
+            mappingRepository.GetQueryable()
+                .Where(x => endpointIds.Contains(x.ModelProviderEndpointId))
+                .Select(x => new { x.ModelProviderEndpointId, x.ModelId, x.Priority }),
+            cancellationToken);
+        var modelIds = mappings.Select(x => x.ModelId).Distinct().ToList();
+
         var models = await modelRepository.ToListAsync(
             modelRepository.GetQueryable().Where(x => modelIds.Contains(x.Id)).Select(x => new { x.Id, x.DisplayName }),
             cancellationToken);
-        var modelDisplayNames = models.ToDictionary(x => x.Id, x => x.DisplayName);
+        var displayNames = models.ToDictionary(x => x.Id, x => x.DisplayName);
 
-        return providers.Select(provider => new ModelProviderDto
+        var endpointsByProvider = endpoints.ToLookup(x => x.ModelProviderId);
+        var mappingsByEndpoint = mappings.ToLookup(x => x.ModelProviderEndpointId);
+
+        query.Result = providers.Select(provider =>
         {
-            Id = provider.Id,
-            CreatedAt = provider.CreatedAt,
-            CreatedBy = provider.CreatedBy,
-            UpdatedAt = provider.UpdatedAt,
-            UpdatedBy = provider.UpdatedBy,
-            Name = provider.Name,
-            Setting = provider.Setting,
-            // 分数高的排前面，与路由取用顺序一致
-            Mappings = provider.Mappings
-                .OrderByDescending(x => x.Priority)
-                .Select(mapping => new ModelProviderMappingDto
-                {
-                    ModelId = mapping.ModelId,
-                    ModelDisplayName = modelDisplayNames.GetValueOrDefault(mapping.ModelId, string.Empty),
-                    Priority = mapping.Priority,
-                    ProviderModelName = mapping.ProviderModelName,
-                })
-                .ToList(),
+            var ownEndpoints = endpointsByProvider[provider.Id].ToList();
+            return new ModelProviderListDto
+            {
+                Id = provider.Id,
+                Name = provider.Name,
+                Protocols = ownEndpoints.Select(x => x.Protocol).Distinct().OrderBy(x => (int)x).ToList(),
+                // 分数高的排前面；同一个模型挂在多个接入点下时只出现一次
+                ModelDisplayNames = ownEndpoints
+                    .SelectMany(endpoint => mappingsByEndpoint[endpoint.Id])
+                    .OrderByDescending(x => x.Priority)
+                    .Select(x => displayNames.GetValueOrDefault(x.ModelId, string.Empty))
+                    .Where(name => name != string.Empty)
+                    .Distinct()
+                    .ToList(),
+                EndpointCount = ownEndpoints.Count,
+                UpdatedAt = provider.UpdatedAt,
+            };
         }).ToList();
+    }
+
+    /// <summary>
+    /// 详情：实体 → DTO 交给 Mapster（多态设置两边声明类型相同，直接引用带出）；手写的只有排序和映射里的模型显示名称回填。
+    /// </summary>
+    [LocalEventHandler]
+    public async Task GetAsync(GetModelProviderQuery query, CancellationToken cancellationToken = default)
+    {
+        var provider = await providerRepository.FindWithEndpointsAsync(query.Id, asNoTracking: true, cancellationToken);
+        if (provider == null)
+        {
+            query.Result = null;
+            return;
+        }
+
+        var dto = provider.Adapt<ModelProviderDto>();
+
+        // 接入点按名称排序、接入点下的映射按分数降序（与路由取用顺序一致）
+        dto.Endpoints = [.. dto.Endpoints.OrderBy(x => x.Name)];
+        foreach (var endpoint in dto.Endpoints)
+        {
+            endpoint.Mappings = [.. endpoint.Mappings.OrderByDescending(x => x.Priority)];
+        }
+
+        // 模型显示名称一次性批量取回填，不逐行查库
+        var modelIds = dto.Endpoints.SelectMany(x => x.Mappings).Select(x => x.ModelId).Distinct().ToList();
+        using var _ = modelRepository.BeginAsNoTracking();
+        var models = await modelRepository.ToListAsync(
+            modelRepository.GetQueryable().Where(x => modelIds.Contains(x.Id)).Select(x => new { x.Id, x.DisplayName }),
+            cancellationToken);
+        var displayNames = models.ToDictionary(x => x.Id, x => x.DisplayName);
+        foreach (var endpoint in dto.Endpoints)
+        {
+            foreach (var mapping in endpoint.Mappings)
+            {
+                mapping.ModelDisplayName = displayNames.GetValueOrDefault(mapping.ModelId, string.Empty);
+            }
+        }
+
+        query.Result = dto;
     }
 }

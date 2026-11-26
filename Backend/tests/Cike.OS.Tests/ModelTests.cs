@@ -184,7 +184,7 @@ public class ModelTests : IClassFixture<CikeOSTestHost>
     public async Task Delete_ModelWithMapping_Throws()
     {
         var modelId = await TestDataFactory.CreateModelAsync(_host, $"guard-{Guid.NewGuid():N}", "映射守护");
-        await TestDataFactory.CreateModelProviderAsync(_host, $"guard-{Guid.NewGuid():N}", mappings: [TestDataFactory.Mapping(modelId)]);
+        await TestDataFactory.CreateProviderWithMappingsAsync(_host, $"guard-{Guid.NewGuid():N}", [TestDataFactory.Mapping(modelId)]);
 
         var ex = await Assert.ThrowsAsync<UserFriendlyException>(
             () => _host.PublishAsync(new DeleteModelCommand(modelId)));
@@ -198,8 +198,8 @@ public class ModelTests : IClassFixture<CikeOSTestHost>
         var modelId = await TestDataFactory.CreateModelAsync(_host, $"guard-{Guid.NewGuid():N}", "跨租户守护");
 
         // 租户 1 的提供方映射到该模型上
-        await WithTenantAsync(1, () => TestDataFactory.CreateModelProviderAsync(
-            _host, "租户一提供商", mappings: [TestDataFactory.Mapping(modelId)]));
+        await WithTenantAsync(1, () => TestDataFactory.CreateProviderWithMappingsAsync(
+            _host, "租户一提供商", [TestDataFactory.Mapping(modelId)]));
 
         // 回到租户 0 删除模型：全库映射计数应挡住删除
         var ex = await Assert.ThrowsAsync<UserFriendlyException>(

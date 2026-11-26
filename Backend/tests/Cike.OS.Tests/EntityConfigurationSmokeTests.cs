@@ -1,4 +1,6 @@
+using Cike.MultiTenancy;
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Repositories;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 using Cike.OS.Domain.ValueObjects;
@@ -228,43 +230,146 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task Model_Domain_RoundTrip()
+    public async Task ModelProvider_ThreeLevelAggregate_GrandchildrenGetIdTenantAndSoftDelete()
     {
+        // 提供方 → 接入点 → 映射是仓库里第一个三层聚合：孙实体的 Id / 租户 / 软删行为没有文档依据，在这里实测
+        const long tenantId = 7;
         long providerId;
+        long removedEndpointId;
+        long removedMappingId;
+        long keptEndpointId;
+        long keptMappingId;
         long modelId;
 
         using (var scope = _host.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
 
-            var tag = new Tag { Key = "vision", Name = "视觉" };
-            dbContext.Add(tag);
-            await dbContext.SaveChangesAsync();
-
-            var model = ModelEntity.Create("gpt-4o", "GPT-4o", "OpenAI flagship model", [tag.Id]);
+            var model = ModelEntity.Create("gpt-4o", "GPT-4o", "OpenAI flagship model", []);
             dbContext.Add(model);
             await dbContext.SaveChangesAsync();
             modelId = model.Id;
 
-            // 映射是聚合内子实体：只能经聚合根加入，与聚合根一起落库
-            var provider = new ModelProvider
-            {
-                Name = "Smoke provider",
-                Setting = new OpenAIModelProviderSetting
-                {
-                    Type = ModelProviderType.OpenAI,
-                    BaseUrl = "https://api.openai.com/v1",
-                    ApiKey = "sk-test",
-                    Organization = "org-1",
-                },
-            };
-            provider.SyncMappings([(modelId, 10, "gpt-4o-2024-11-20")]);
+            // 接入点与映射是聚合内子实体：只能经聚合根加入，与聚合根一起落库
+            var provider = ModelProvider.Create("Smoke provider");
+            provider.SyncEndpoints([
+                new ModelProvider.EndpointInput(
+                    0,
+                    ModelProviderProtocol.OpenAI,
+                    "官方",
+                    "https://api.openai.com/v1",
+                    "sk-test",
+                    new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+                    [(modelId, 10, "gpt-4o-2024-11-20")]),
+            ]);
             dbContext.Add(provider);
             await dbContext.SaveChangesAsync();
-            providerId = provider.Id;
 
-            // 既有聚合根新增子实体：外键由 EF 关系修正回填
-            provider.SyncMappings([(modelId, 10, "gpt-4o-2024-11-20"), (999, 5, null)]);
+            providerId = provider.Id;
+            removedEndpointId = provider.Endpoints[0].Id;
+            removedMappingId = provider.Endpoints[0].Mappings[0].Id;
+        }
+
+        using (var scope = _host.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
+
+            // 自定义仓储：两级 Include 一次把接入点与映射查全（通用仓储的 WithDetails 只能预加载一级）
+            var repository = scope.ServiceProvider.GetRequiredService<IModelProviderRepository>();
+            var provider = await repository.FindWithEndpointsAsync(providerId);
+            Assert.NotNull(provider);
+
+            var removedEndpoint = Assert.Single(provider.Endpoints);
+            var removedMapping = Assert.Single(removedEndpoint.Mappings);
+            Assert.Equal(removedEndpointId, removedEndpoint.Id);
+            Assert.Equal(removedMappingId, removedMapping.Id);
+
+            // 孙实体随聚合保存时自动生成雪花 Id、写入租户，外键由 EF 关系修正回填
+            Assert.True(removedMapping.Id > 0);
+            Assert.Equal(tenantId, removedEndpoint.TenantId);
+            Assert.Equal(tenantId, removedMapping.TenantId);
+            Assert.Equal(providerId, removedEndpoint.ModelProviderId);
+            Assert.Equal(removedEndpointId, removedMapping.ModelProviderEndpointId);
+            var setting = Assert.IsType<OpenAIModelProviderEndpointSetting>(removedEndpoint.Setting);
+            Assert.Equal("org-1", setting.Organization);
+
+            // 既有聚合根同步子实体：已有的保留、Id 为 0 的新增，同样自动拿到 Id
+            provider.SyncEndpoints(
+            [
+                new ModelProvider.EndpointInput(
+                    removedEndpointId,
+                    ModelProviderProtocol.OpenAI,
+                    "官方",
+                    "https://api.openai.com/v1",
+                    "sk-test",
+                    new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+                    [(modelId, 10, "gpt-4o-2024-11-20")]),
+                new ModelProvider.EndpointInput(
+                    0,
+                    ModelProviderProtocol.Anthropic,
+                    "官方 Anthropic",
+                    "https://api.anthropic.com",
+                    "ak-test",
+                    new AnthropicModelProviderEndpointSetting(),
+                    [(modelId, 5, null)]),
+            ]);
+            await dbContext.SaveChangesAsync();
+            var keptEndpoint = provider.Endpoints.Single(x => x.Id != removedEndpointId);
+            keptEndpointId = keptEndpoint.Id;
+            keptMappingId = keptEndpoint.Mappings[0].Id;
+            Assert.True(keptEndpointId > 0);
+            Assert.True(keptMappingId > 0);
+
+            // 映射随接入点整体同步：未提交的被移除；从集合移除的子实体在保存时转软删
+            provider.SyncEndpoints(
+            [
+                new ModelProvider.EndpointInput(
+                    removedEndpointId,
+                    ModelProviderProtocol.OpenAI,
+                    "官方",
+                    "https://vip.api.openai.com/v1",
+                    "sk-new",
+                    new OpenAIModelProviderEndpointSetting(),
+                    []),
+                new ModelProvider.EndpointInput(
+                    keptEndpointId,
+                    ModelProviderProtocol.Anthropic,
+                    "官方 Anthropic",
+                    "https://api.anthropic.com",
+                    "ak-test",
+                    new AnthropicModelProviderEndpointSetting(),
+                    [(modelId, 5, null)]),
+            ]);
+            await dbContext.SaveChangesAsync();
+
+            // 未提交的接入点被移除：接入点与其映射一并软删
+            provider.SyncEndpoints(
+            [
+                new ModelProvider.EndpointInput(
+                    keptEndpointId,
+                    ModelProviderProtocol.Anthropic,
+                    "官方 Anthropic",
+                    "https://api.anthropic.com",
+                    "ak-test",
+                    new AnthropicModelProviderEndpointSetting(),
+                    [(modelId, 5, null)]),
+            ]);
+            await dbContext.SaveChangesAsync();
+        }
+
+        using (var scope = _host.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
+
+            var repository = scope.ServiceProvider.GetRequiredService<IModelProviderRepository>();
+            var provider = await repository.FindWithEndpointsAsync(providerId);
+            Assert.Equal("官方 Anthropic", Assert.Single(provider!.Endpoints).Name);
+
+            // 删聚合根：先连同两层子集合加载跟踪，接入点与映射才会跟着软删（软删不触发数据库级联）
+            dbContext.Remove(provider);
             await dbContext.SaveChangesAsync();
         }
 
@@ -272,25 +377,21 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
-            var provider = await dbContext.ModelProviders.AsNoTracking()
-                .Include(x => x.Mappings)
-                .SingleAsync(x => x.Id == providerId);
-            var setting = Assert.IsType<OpenAIModelProviderSetting>(provider.Setting);
-            Assert.Equal(ModelProviderType.OpenAI, setting.Type);
-            Assert.Equal("https://api.openai.com/v1", setting.BaseUrl);
-            Assert.Equal("sk-test", setting.ApiKey);
-            Assert.Equal("org-1", setting.Organization);
+            Assert.False(await dbContext.ModelProviders.IgnoreQueryFilters().AnyAsync(x => x.Id == providerId && !x.IsDeleted));
 
-            var model = await dbContext.Models.AsNoTracking().SingleAsync(x => x.Id == modelId);
-            Assert.Equal("GPT-4o", model.DisplayName);
-            Assert.Equal("OpenAI flagship model", model.Description);
-            Assert.Single(model.TagIds);
+            var endpoints = await dbContext.ModelProviderEndpoints.IgnoreQueryFilters()
+                .Where(x => x.ModelProviderId == providerId)
+                .ToListAsync();
+            Assert.Equal(2, endpoints.Count);
+            Assert.All(endpoints, x => Assert.True(x.IsDeleted));
 
-            Assert.Equal(2, provider.Mappings.Count);
-            Assert.All(provider.Mappings, x => Assert.Equal(providerId, x.ModelProviderId));
-            var mapping = provider.Mappings.Single(x => x.ModelId == modelId);
-            Assert.Equal(10, mapping.Priority);
-            Assert.Equal("gpt-4o-2024-11-20", mapping.ProviderModelName);
+            var mappings = await dbContext.ModelProviderMappings.IgnoreQueryFilters()
+                .Where(x => x.ModelId == modelId && x.TenantId == tenantId)
+                .ToListAsync();
+            Assert.Equal(2, mappings.Count);
+            Assert.All(mappings, x => Assert.True(x.IsDeleted));
+            Assert.Contains(mappings, x => x.Id == removedMappingId);
+            Assert.Contains(mappings, x => x.Id == keptMappingId);
         }
     }
 
