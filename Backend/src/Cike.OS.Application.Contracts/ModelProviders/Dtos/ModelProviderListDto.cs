@@ -8,11 +8,8 @@ public class ModelProviderListDto : AuditedEntityDto<long>
 {
     public string Name { get; set; } = null!;
 
-    /// <summary>名下接入点用到的协议，去重，按协议枚举顺序。</summary>
-    public List<ModelProviderProtocol> Protocols { get; set; } = [];
+    public ModelProviderProtocol Protocol { get; set; }
 
-    /// <summary>跨接入点按模型去重的显示名称，分数高的排前面。</summary>
-    public List<string> ModelDisplayNames { get; set; } = [];
-
-    public int EndpointCount { get; set; }
+    /// <summary>名下模型的名称，按名称排序。</summary>
+    public List<string> ModelNames { get; set; } = [];
 }

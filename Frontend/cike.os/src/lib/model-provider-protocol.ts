@@ -1,14 +1,14 @@
 import type {
-  AnthropicModelProviderEndpointSetting,
+  AnthropicModelProviderSetting,
   ModelProviderProtocol,
-  OpenAiChatCompletionModelProviderEndpointSetting,
-  OpenAiResponseModelProviderEndpointSetting,
+  OpenAiChatCompletionModelProviderSetting,
+  OpenAiResponseModelProviderSetting,
 } from '@/api'
 
-type AnyEndpointSetting =
-  | OpenAiChatCompletionModelProviderEndpointSetting
-  | OpenAiResponseModelProviderEndpointSetting
-  | AnthropicModelProviderEndpointSetting
+type AnyProviderSetting =
+  | OpenAiChatCompletionModelProviderSetting
+  | OpenAiResponseModelProviderSetting
+  | AnthropicModelProviderSetting
 
 /** 协议：数值与后端 ModelProviderProtocol 一致（即协议专属设置的判别键 type），不引入 enum（erasableSyntaxOnly） */
 const MODEL_PROVIDER_PROTOCOL = {
@@ -46,6 +46,6 @@ export {
   PROTOCOL_OPTIONS,
   isOpenAiProtocol,
   protocolLabel,
-  type AnyEndpointSetting,
+  type AnyProviderSetting,
   type ProtocolValue,
 }

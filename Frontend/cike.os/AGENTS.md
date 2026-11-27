@@ -21,7 +21,7 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方 / 接入点表单校验与新建 / 更新请求体、过滤 / 格式化）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方表单校验与请求体、模型条目的加入 / 替换 / 移除、过滤 / 格式化）
 pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
 # 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
@@ -40,7 +40,7 @@ src/
 │                       #   client.gen.ts（`client` 实例，从 '@/api/client.gen' 导入）
 ├─ components/          # 业务组件（自己写）
 │  ├─ shared/           # 跨模块复用的业务包装（DeleteConfirmDialog、TablePagination）
-│  ├─ tool-packages/ tool-package-categories/ tools/ models/ model-providers/   # 按模块分目录；*.test.ts 旁边放纯函数测试
+│  ├─ tool-packages/ tool-package-categories/ tools/ tags/ model-providers/   # 按模块分目录；*.test.ts 旁边放纯函数测试（tags/ 下有跨模块复用的 TagMultiSelect）
 │  └─ ui/               # shadcn-vue 生成物——勿手改，见专节
 ├─ lib/
 │  ├─ errors.ts         # getErrorMessage(result)：从生成 client 的失败结果提取中文文案（字串 / ProblemDetails.errors / 404 / 5xx）
@@ -96,8 +96,8 @@ if (error) toast.error(getErrorMessage(error))
 - **`ui/` 与业务组件分层**：业务组件放 `src/components/`（`ui/` 之外），文件名 PascalCase 且与组件名一致；对 `ui/` 组件的定制若被多处复用，封装成业务包装组件，不在 `ui/` 生成物上反复打补丁。
 - **组件命名模式**：表单类独立成 `*Form.vue`，对话框类独立成 `*Dialog.vue` / `*Modal.vue`（确认框用 shadcn-vue 的 `AlertDialog`），不内联在页面或其它组件里。
 - **列表页的排序与时间列**：
-  - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排（如接入点里选模型传 `DisplayName asc`）。
-  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们仍归在父级详情页里维护，不是独立的实体列表页（接入点虽是独立的聚合、有自己的增删改查接口）。
+  - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排。
+  - 实体列表页（模型提供方、工具包、标签、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方表单里的模型、工具包详情里的工具）不加——它们随父级一起维护，不是独立的实体列表页。
 - **图标只用 `@lucide/vue`**：本项目依赖的是 `@lucide/vue`，禁止引入 `lucide-vue-next` 或其它图标库（两者包名 / API 不同，混用会重复打包）。
 
 ## 配色约束（zinc 中性色板）

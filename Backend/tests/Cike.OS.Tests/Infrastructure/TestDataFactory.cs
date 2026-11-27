@@ -1,15 +1,10 @@
-using Cike.OS.Application.ModelProviderEndpoints.Queries;
-using Cike.OS.Application.ModelProviderEndpoints.Commands;
-using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
-using Cike.OS.Application.Contracts.Models.Dtos;
 using Cike.OS.Application.Contracts.Tags.Dtos;
 using Cike.OS.Application.Contracts.ToolPackageCategories.Dtos;
 using Cike.OS.Application.Contracts.ToolPackages.Dtos;
 using Cike.OS.Application.Contracts.Tools.Dtos;
 using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Application.ModelProviders.Queries;
-using Cike.OS.Application.Models.Commands;
 using Cike.OS.Application.Tags.Commands;
 using Cike.OS.Application.ToolPackageCategories.Commands;
 using Cike.OS.Application.ToolPackages.Commands;
@@ -63,115 +58,75 @@ public static class TestDataFactory
         _ => new HttpMcpToolSetting { Name = "http", Endpoint = "http://localhost:5000/mcp" },
     };
 
-    /// <summary>只建提供方（只有名称，没有任何接入点）。</summary>
-    public static async Task<long> CreateModelProviderAsync(CikeOSTestHost host, string name)
-    {
-        var command = new CreateModelProviderCommand(new CreateModelProviderDto { Name = name });
-        await host.PublishAsync(command);
-        return command.Id;
-    }
+    private static string NewName() => $"provider-{Guid.NewGuid():N}";
 
-    public static ModelProviderEndpointSetting CreateEndpointSetting(ModelProviderProtocol protocol) => protocol switch
+    public static ModelProviderSetting CreateSetting(ModelProviderProtocol protocol) => protocol switch
     {
-        ModelProviderProtocol.Anthropic => new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" },
-        ModelProviderProtocol.OpenAIResponse => new OpenAIResponseModelProviderEndpointSetting { Organization = "org-1" },
-        _ => new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
+        ModelProviderProtocol.Anthropic => new AnthropicModelProviderSetting { Version = "2023-06-01" },
+        ModelProviderProtocol.OpenAIResponse => new OpenAIResponseModelProviderSetting { Organization = "org-1" },
+        _ => new OpenAIChatCompletionModelProviderSetting { Organization = "org-1" },
     };
 
-    /// <summary>接入点的新建输入：第一个参数是所属提供方。</summary>
-    public static CreateModelProviderEndpointDto Endpoint(
-        long modelProviderId = 0,
-        string name = "官方",
+    /// <summary>模型提供方的新建输入：连接字段 + 它提供的全部模型。名称不传时随机（同租户内不重名，避免用例间互撞）。</summary>
+    public static CreateModelProviderDto Provider(
+        string? name = null,
         ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
-        IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
+        IReadOnlyList<SaveModelProviderModelDto>? models = null,
         string baseUrl = "https://api.openai.com/v1",
         string apiKey = "sk-test",
-        ModelProviderEndpointSetting? setting = null) => new()
+        ModelProviderSetting? setting = null) => new()
     {
-        ModelProviderId = modelProviderId,
-        Name = name,
+        Name = name ?? NewName(),
         Protocol = protocol,
         BaseUrl = baseUrl,
         ApiKey = apiKey,
-        Setting = setting ?? CreateEndpointSetting(protocol),
-        Mappings = mappings?.ToList() ?? [],
+        Setting = setting ?? CreateSetting(protocol),
+        Models = models?.ToList() ?? [],
     };
 
-    /// <summary>接入点的更新输入：没有协议（创建后不可变），设置的子类型要对着现有协议给。</summary>
-    public static UpdateModelProviderEndpointDto EndpointUpdate(
-        string name = "官方",
+    /// <summary>模型提供方的更新输入：连接字段与模型列表同新建（协议可改）。名称不传时随机。</summary>
+    public static UpdateModelProviderDto ProviderUpdate(
+        string? name = null,
         ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
-        IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
+        IReadOnlyList<SaveModelProviderModelDto>? models = null,
         string baseUrl = "https://api.openai.com/v1",
         string apiKey = "sk-test",
-        ModelProviderEndpointSetting? setting = null) => new()
+        ModelProviderSetting? setting = null) => new()
     {
-        Name = name,
+        Name = name ?? NewName(),
+        Protocol = protocol,
         BaseUrl = baseUrl,
         ApiKey = apiKey,
-        Setting = setting ?? CreateEndpointSetting(protocol),
-        Mappings = mappings?.ToList() ?? [],
+        Setting = setting ?? CreateSetting(protocol),
+        Models = models?.ToList() ?? [],
     };
 
-    /// <summary>新建一个接入点（含它的全部映射），返回新接入点的 Id。</summary>
-    public static async Task<long> AddEndpointAsync(CikeOSTestHost host, CreateModelProviderEndpointDto endpoint)
+    /// <summary>模型的一条输入：以名称为键，不带 Id。</summary>
+    public static SaveModelProviderModelDto Model(string name, string? description = null, List<long>? tagIds = null) => new()
     {
-        var command = new CreateModelProviderEndpointCommand(endpoint);
+        Name = name,
+        Description = description,
+        TagIds = tagIds ?? [],
+    };
+
+    /// <summary>只建提供方（一条连接，没有任何模型）。</summary>
+    public static async Task<long> CreateModelProviderAsync(CikeOSTestHost host, string name)
+    {
+        var command = new CreateModelProviderCommand(Provider(name));
         await host.PublishAsync(command);
         return command.Id;
     }
 
-    public static Task UpdateEndpointAsync(CikeOSTestHost host, long endpointId, UpdateModelProviderEndpointDto endpoint) =>
-        host.PublishAsync(new UpdateModelProviderEndpointCommand(endpointId, endpoint));
+    public static Task UpdateModelProviderAsync(CikeOSTestHost host, long providerId, UpdateModelProviderDto provider) =>
+        host.PublishAsync(new UpdateModelProviderCommand(providerId, provider));
 
-    public static Task DeleteEndpointAsync(CikeOSTestHost host, long endpointId) =>
-        host.PublishAsync(new DeleteModelProviderEndpointCommand(endpointId));
-
-    /// <summary>读回一个提供方名下的全部接入点（按名称排序、映射按分数降序、带模型显示名）。</summary>
-    public static async Task<List<ModelProviderEndpointDto>> GetEndpointsAsync(CikeOSTestHost host, long providerId)
+    /// <summary>读回一个提供方（连接字段 + 按名称排序的全部模型）；不存在时为 null。</summary>
+    public static async Task<ModelProviderDto?> GetModelProviderAsync(CikeOSTestHost host, long providerId)
     {
-        var query = new GetModelProviderEndpointListQuery(providerId);
-        await host.PublishAsync(query);
-        return query.Result!;
-    }
-
-    /// <summary>读回一个接入点的详情；不存在时为 null。</summary>
-    public static async Task<ModelProviderEndpointDto?> GetEndpointAsync(CikeOSTestHost host, long endpointId)
-    {
-        var query = new GetModelProviderEndpointQuery(endpointId);
+        var query = new GetModelProviderQuery(providerId);
         await host.PublishAsync(query);
         return query.Result;
     }
-
-    public static Task RenameModelProviderAsync(CikeOSTestHost host, long providerId, string name) =>
-        host.PublishAsync(new UpdateModelProviderCommand(providerId, new UpdateModelProviderDto { Name = name }));
-
-    /// <summary>建一个「提供方 + 一个接入点 + 映射」，给只关心「模型是否被映射引用」的用例用。</summary>
-    public static async Task CreateProviderWithMappingsAsync(CikeOSTestHost host, string name, IReadOnlyList<SaveModelProviderMappingDto> mappings)
-    {
-        var providerId = await CreateModelProviderAsync(host, name);
-        await AddEndpointAsync(host, Endpoint(providerId, mappings: mappings));
-    }
-
-    public static async Task<long> CreateModelAsync(CikeOSTestHost host, string name, string displayName, string? description = null, List<long>? tagIds = null)
-    {
-        var command = new CreateModelCommand(new CreateModelDto
-        {
-            Name = name,
-            DisplayName = displayName,
-            Description = description,
-            TagIds = tagIds ?? [],
-        });
-        await host.PublishAsync(command);
-        return command.Id;
-    }
-
-    public static SaveModelProviderMappingDto Mapping(long modelId, int priority = 10, string? providerModelName = null) => new()
-    {
-        ModelId = modelId,
-        Priority = priority,
-        ProviderModelName = providerModelName,
-    };
 
     public static async Task<long> CreateTagAsync(CikeOSTestHost host, string key, string name = "测试标签")
     {

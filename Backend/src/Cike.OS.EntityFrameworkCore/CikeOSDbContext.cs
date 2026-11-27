@@ -36,10 +36,6 @@ public class CikeOSDbContext : CikeDbContext<CikeOSDbContext>
 
     public virtual DbSet<ModelEntity> Models { get; set; }
 
-    public virtual DbSet<ModelProviderEndpoint> ModelProviderEndpoints { get; set; }
-
-    public virtual DbSet<ModelProviderMapping> ModelProviderMappings { get; set; }
-
     public virtual DbSet<ModelProvider> ModelProviders { get; set; }
 
     public virtual DbSet<Tag> Tags { get; set; }

@@ -8,7 +8,7 @@ public class ModelCacheDto : AuditedEntityDto<long>, IMultiTenant
 
     public string Name { get; set; } = null!;
 
-    public string DisplayName { get; set; } = null!;
+    public string Description { get; set; } = string.Empty;
 
     public List<long> TagIds { get; set; } = [];
 }

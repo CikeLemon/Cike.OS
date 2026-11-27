@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { ModelProviderListDto } from '@/api'
-import { deleteApiV1ModelProvidersById, getApiV1ModelProvidersList } from '@/api'
-import { Plus, Trash } from '@lucide/vue'
+import type { ModelProviderDto, ModelProviderListDto, TagDto } from '@/api'
+import { deleteApiV1ModelProvidersById, getApiV1ModelProvidersById, getApiV1ModelProvidersList, getApiV1TagsList } from '@/api'
+import { Pencil, Plus, Trash } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,14 +14,33 @@ import { getErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { protocolLabel } from '@/lib/model-provider-protocol'
 
-const router = useRouter()
-
 const providers = ref<ModelProviderListDto[]>([])
 const loading = ref(true)
 
+// 标签只有 id 列表，表单里的名称从这里查表回显
+const tags = ref<TagDto[]>([])
+// 标签列表没加载成功时：编辑框不过滤回填、不允许保存
+const tagsReady = ref(false)
+
 const dialogOpen = ref(false)
+/** 编辑对象：点编辑时按 Id 取到的详情（连接字段 + 全部模型），null 为新建 */
+const editing = ref<ModelProviderDto | null>(null)
+const opening = ref(false)
+
 const deleting = ref<ModelProviderListDto | null>(null)
+/** 名称单独存：确认框关闭动画期间 deleting 已被清空，直接读它会闪成空串 */
+const deletingName = ref('')
 const deleteBusy = ref(false)
+
+async function loadTags() {
+  const result = await getApiV1TagsList()
+  if (result.error) {
+    toast.error(getErrorMessage(result))
+    return
+  }
+  tags.value = result.data ?? []
+  tagsReady.value = true
+}
 
 async function load() {
   loading.value = true
@@ -39,20 +57,26 @@ async function load() {
 }
 
 function openCreate() {
+  editing.value = null
   dialogOpen.value = true
 }
 
-/** 新建成功后直接进入详情页添加接入点 */
-function onCreated(id: string) {
-  if (id) {
-    router.push({ name: 'model-provider-detail', params: { id } })
-    return
-  }
-  load()
-}
+/** 编辑前先按 Id 取详情：表单里是这个提供方此刻最新的连接信息和全部模型，不拿列表行回填。标签列表没就绪时按钮禁用，与保存同一口径 */
+async function openEdit(provider: ModelProviderListDto) {
+  if (opening.value) return
 
-function openDetail(provider: ModelProviderListDto) {
-  router.push({ name: 'model-provider-detail', params: { id: provider.id ?? '' } })
+  opening.value = true
+  try {
+    const result = await getApiV1ModelProvidersById({ path: { id: provider.id ?? '' } })
+    if (result.error || !result.data) {
+      toast.error(getErrorMessage(result))
+      return
+    }
+    editing.value = result.data
+    dialogOpen.value = true
+  } finally {
+    opening.value = false
+  }
 }
 
 async function confirmDelete() {
@@ -75,7 +99,10 @@ async function confirmDelete() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  loadTags()
+  load()
+})
 </script>
 
 <template>
@@ -94,56 +121,53 @@ onMounted(load)
           <TableRow>
             <TableHead class="w-52">名称</TableHead>
             <TableHead class="w-56">协议</TableHead>
-            <TableHead class="min-w-64">支持的模型</TableHead>
-            <TableHead class="w-24">接入点</TableHead>
+            <TableHead class="min-w-64">模型</TableHead>
             <TableHead class="w-44">创建时间</TableHead>
             <TableHead class="w-44">更新时间</TableHead>
-            <TableHead class="w-20 text-right">操作</TableHead>
+            <TableHead class="w-24 text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <template v-if="loading">
             <TableRow v-for="i in 5" :key="i">
-              <TableCell colspan="7"><Skeleton class="h-5 w-1/2" /></TableCell>
+              <TableCell colspan="6"><Skeleton class="h-5 w-1/2" /></TableCell>
             </TableRow>
           </template>
-          <TableEmpty v-else-if="providers.length === 0" :colspan="7">尚无模型提供方，点击右上角新建。</TableEmpty>
+          <TableEmpty v-else-if="providers.length === 0" :colspan="6">尚无模型提供方，点击右上角新建。</TableEmpty>
           <TableRow v-for="provider in providers" v-else :key="provider.id">
-            <TableCell class="font-medium">
-              <button type="button" class="hover:underline" @click="openDetail(provider)">{{ provider.name }}</button>
+            <TableCell class="font-medium">{{ provider.name }}</TableCell>
+            <TableCell>
+              <Badge variant="outline">{{ protocolLabel(provider.protocol) }}</Badge>
             </TableCell>
             <TableCell>
-              <!-- 后端已按提供方汇总：协议去重、按枚举顺序 -->
-              <div v-if="provider.protocols?.length" class="flex flex-wrap gap-1">
-                <Badge v-for="protocol in provider.protocols" :key="protocol" variant="outline">{{ protocolLabel(protocol) }}</Badge>
+              <!-- 后端已按提供方汇总并按名称排序 -->
+              <div v-if="provider.modelNames?.length" class="flex flex-wrap gap-1">
+                <Badge v-for="name in provider.modelNames" :key="name" variant="secondary">{{ name }}</Badge>
               </div>
               <span v-else class="text-muted-foreground">—</span>
             </TableCell>
-            <TableCell>
-              <!-- 跨接入点按模型去重，分数高的在前 -->
-              <div v-if="provider.modelDisplayNames?.length" class="flex flex-wrap gap-1">
-                <Badge v-for="name in provider.modelDisplayNames" :key="name" variant="secondary">{{ name }}</Badge>
-              </div>
-              <span v-else class="text-muted-foreground">—</span>
-            </TableCell>
-            <TableCell class="text-muted-foreground">{{ provider.endpointCount ?? 0 }} 个</TableCell>
             <TableCell class="text-muted-foreground">{{ formatDateTime(provider.createdAt) }}</TableCell>
             <TableCell class="text-muted-foreground">{{ formatDateTime(provider.updatedAt) }}</TableCell>
             <TableCell class="text-right">
-              <Button size="icon-sm" variant="ghost" aria-label="删除" @click="deleting = provider">
-                <Trash />
-              </Button>
+              <div class="flex justify-end gap-1">
+                <Button size="icon-sm" variant="ghost" aria-label="编辑" :disabled="opening || !tagsReady" @click="openEdit(provider)">
+                  <Pencil />
+                </Button>
+                <Button size="icon-sm" variant="ghost" aria-label="删除" @click="deleting = provider; deletingName = provider.name ?? ''">
+                  <Trash />
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
     </div>
 
-    <ModelProviderFormDialog v-model:open="dialogOpen" :provider="null" @saved="onCreated" />
+    <ModelProviderFormDialog v-model:open="dialogOpen" :provider="editing" :tags="tags" :tags-ready="tagsReady" @saved="load" />
     <DeleteConfirmDialog
       :open="deleting !== null"
       title="删除模型提供方"
-      :description="`确定删除模型提供方「${deleting?.name ?? ''}」？它名下的全部接入点与模型映射会一并删除。`"
+      :description="`确定删除模型提供方「${deletingName}」？名下全部模型会一并删除。`"
       :loading="deleteBusy"
       @update:open="deleting = null"
       @confirm="confirmDelete"

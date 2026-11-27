@@ -1,12 +1,7 @@
-using Cike.OS.Application.ModelProviderEndpoints.Queries;
-using Cike.OS.Application.ModelProviderEndpoints.Commands;
-using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.MultiTenancy;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Application.ModelProviders.Queries;
-using Cike.OS.Application.Models.Commands;
-using Cike.OS.Application.Models.Queries;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 using Cike.OS.Tests.Infrastructure;
@@ -16,8 +11,8 @@ using Xunit;
 namespace Cike.OS.Tests;
 
 /// <summary>
-/// 模型提供方与接入点：业务规则从发布 Command / Query 进入。
-/// 接入点是独立的聚合（按提供方 Id 归属），经它自己的用例增删改查；提供商映射随接入点整体同步；提供方只管自己的名称。
+/// 模型提供方：业务规则从发布 Command / Query 进入。
+/// 提供方是一条连接，模型是它聚合内的子实体、随提供方的请求整体同步（以名称为键）；标签是平台级目录，由 Handler 查库校验引用是否存在。
 /// </summary>
 public class ModelProviderTests : IClassFixture<CikeOSTestHost>
 {
@@ -36,106 +31,130 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
         await action();
     }
 
-    private async Task<ModelProviderDto> GetProviderAsync(long id)
+    private async Task<long> CreateAsync(CreateModelProviderDto provider)
     {
-        var query = new GetModelProviderQuery(id);
+        var command = new CreateModelProviderCommand(provider);
+        await _host.PublishAsync(command);
+        return command.Id;
+    }
+
+    private Task UpdateAsync(long providerId, UpdateModelProviderDto provider) =>
+        TestDataFactory.UpdateModelProviderAsync(_host, providerId, provider);
+
+    private async Task<ModelProviderDto> GetAsync(long providerId) =>
+        await TestDataFactory.GetModelProviderAsync(_host, providerId) ?? throw new InvalidOperationException();
+
+    private async Task<List<ModelProviderListDto>> ListAsync()
+    {
+        var query = new GetModelProviderListQuery();
         await _host.PublishAsync(query);
         return query.Result!;
     }
 
-    private async Task<ModelProviderDto> CreateProviderAsync(string name)
-    {
-        var id = await TestDataFactory.CreateModelProviderAsync(_host, name);
-        return await GetProviderAsync(id);
-    }
+    private async Task<bool> ExistsByNameAsync(string name) =>
+        (await ListAsync()).Any(x => x.Name == name);
 
-    private Task<List<ModelProviderEndpointDto>> GetEndpointsAsync(long providerId) =>
-        TestDataFactory.GetEndpointsAsync(_host, providerId);
-
-    private Task<ModelProviderEndpointDto?> GetEndpointAsync(long endpointId) =>
-        TestDataFactory.GetEndpointAsync(_host, endpointId);
-
-    private Task<long> AddEndpointAsync(CreateModelProviderEndpointDto endpoint) =>
-        TestDataFactory.AddEndpointAsync(_host, endpoint);
-
-    private Task UpdateEndpointAsync(long endpointId, UpdateModelProviderEndpointDto endpoint) =>
-        TestDataFactory.UpdateEndpointAsync(_host, endpointId, endpoint);
-
-    private Task RemoveEndpointAsync(long endpointId) =>
-        TestDataFactory.DeleteEndpointAsync(_host, endpointId);
-
-    private Task RenameAsync(long providerId, string name) =>
-        TestDataFactory.RenameModelProviderAsync(_host, providerId, name);
-
-    // 显示名称全局唯一：造数时带上唯一后缀，避免用例间互撞
-    private async Task<long> CreateModelAsync(string label) =>
-        await TestDataFactory.CreateModelAsync(_host, $"m-{Guid.NewGuid():N}", $"模型{label}-{Guid.NewGuid():N}");
-
-    private async Task AssertModelDeletableAsync(long modelId)
-    {
-        await _host.PublishAsync(new DeleteModelCommand(modelId));
-        var model = new GetModelQuery(modelId);
-        await _host.PublishAsync(model);
-        Assert.Null(model.Result);
-    }
-
-    private async Task AssertModelDeleteRejectedAsync(long modelId)
-    {
-        await Assert.ThrowsAsync<UserFriendlyException>(() => _host.PublishAsync(new DeleteModelCommand(modelId)));
-    }
-
-    // ───── 模型提供方：只管自己的名称 ─────
+    // ───── 新建：连接与模型 ─────
 
     [Fact]
-    public async Task Create_OnlyName_Get_ReturnsNameOnly()
+    public async Task Create_WithConnectionAndModels_Get_ReturnsConnectionAndModelsSortedByName()
     {
-        var name = $"bare-{Guid.NewGuid():N}";
-        var provider = await CreateProviderAsync(name);
+        var name = $"full-{Guid.NewGuid():N}";
+        var tagId = await TestDataFactory.CreateTagAsync(_host, $"full-{Guid.NewGuid():N}");
 
-        Assert.True(provider.Id > 0);
+        var providerId = await CreateAsync(TestDataFactory.Provider(name, models:
+        [
+            TestDataFactory.Model("glm-5.3", "旗舰", [tagId]),
+            TestDataFactory.Model("qwen-8-max"),
+            TestDataFactory.Model("qwen3.8-flash", "轻量"),
+        ]));
+
+        var provider = await GetAsync(providerId);
         Assert.Equal(name, provider.Name);
-        Assert.Empty(await GetEndpointsAsync(provider.Id));
+        Assert.Equal(ModelProviderProtocol.OpenAIChatCompletion, provider.Protocol);
+        Assert.Equal("https://api.openai.com/v1", provider.BaseUrl);
+        Assert.Equal("sk-test", provider.ApiKey);
+        Assert.Equal("org-1", Assert.IsType<OpenAIChatCompletionModelProviderSetting>(provider.Setting).Organization);
+
+        // 模型按名称排序；描述与标签原样带回
+        Assert.Equal(["glm-5.3", "qwen-8-max", "qwen3.8-flash"], provider.Models.Select(x => x.Name).ToList());
+        Assert.Equal("旗舰", provider.Models[0].Description);
+        Assert.Equal([tagId], provider.Models[0].TagIds);
+        Assert.Equal(string.Empty, provider.Models[1].Description);
+        Assert.Empty(provider.Models[1].TagIds);
     }
 
     [Fact]
-    public async Task Update_RenamesProvider_AndKeepsEndpoints()
+    public async Task Create_WithoutModels_Get_ReturnsEmptyModels()
     {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"rename-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId));
+        // 先立起连接、之后再补模型
+        var provider = await GetAsync(await CreateAsync(TestDataFactory.Provider($"bare-{Guid.NewGuid():N}")));
 
-        await RenameAsync(providerId, "改名后的提供方");
-
-        Assert.Equal("改名后的提供方", (await GetProviderAsync(providerId)).Name);
-        Assert.Equal([endpointId], (await GetEndpointsAsync(providerId)).Select(x => x.Id).ToList());
+        Assert.Empty(provider.Models);
     }
 
     [Fact]
-    public async Task Update_DuplicateName_Throws()
+    public async Task Create_AnthropicProvider_StoresAnthropicSetting()
     {
-        var takenName = $"taken-{Guid.NewGuid():N}";
-        await TestDataFactory.CreateModelProviderAsync(_host, takenName);
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"other-{Guid.NewGuid():N}");
+        var providerId = await CreateAsync(TestDataFactory.Provider(
+            $"anthropic-{Guid.NewGuid():N}",
+            ModelProviderProtocol.Anthropic,
+            baseUrl: "https://api.anthropic.com",
+            apiKey: "ak-test"));
 
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => RenameAsync(providerId, takenName));
-        Assert.Contains("已存在", ex.Message);
+        var provider = await GetAsync(providerId);
+        Assert.Equal(ModelProviderProtocol.Anthropic, provider.Protocol);
+        Assert.Equal("https://api.anthropic.com", provider.BaseUrl);
+        Assert.Equal("ak-test", provider.ApiKey);
+        Assert.Equal("2023-06-01", Assert.IsType<AnthropicModelProviderSetting>(provider.Setting).Version);
     }
 
     [Fact]
-    public async Task Update_NonexistentProvider_Throws()
+    public async Task Create_OpenAIResponseProvider_StoresResponseSetting()
     {
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => RenameAsync(999999, "幽灵"));
-        Assert.Contains("模型提供方不存在", ex.Message);
+        var providerId = await CreateAsync(TestDataFactory.Provider(
+            $"response-{Guid.NewGuid():N}", ModelProviderProtocol.OpenAIResponse));
+
+        var provider = await GetAsync(providerId);
+        Assert.Equal(ModelProviderProtocol.OpenAIResponse, provider.Protocol);
+        Assert.Equal("org-1", Assert.IsType<OpenAIResponseModelProviderSetting>(provider.Setting).Organization);
     }
 
     [Fact]
-    public async Task Create_DuplicateName_SameTenant_Throws()
+    public async Task Create_WithoutProtocolSpecificFields_StoresNull()
+    {
+        var providerId = await CreateAsync(TestDataFactory.Provider(
+            $"nulls-{Guid.NewGuid():N}", setting: new OpenAIChatCompletionModelProviderSetting()));
+
+        var provider = await GetAsync(providerId);
+        Assert.Null(Assert.IsType<OpenAIChatCompletionModelProviderSetting>(provider.Setting).Organization);
+    }
+
+    [Fact]
+    public async Task Create_ModelWithDuplicateTagReferences_StoresDistinctTagIds()
+    {
+        var first = await TestDataFactory.CreateTagAsync(_host, $"dup-a-{Guid.NewGuid():N}");
+        var second = await TestDataFactory.CreateTagAsync(_host, $"dup-b-{Guid.NewGuid():N}");
+
+        var providerId = await CreateAsync(TestDataFactory.Provider(models: [TestDataFactory.Model("glm-5.3", tagIds: [first, first, second])]));
+
+        Assert.Equal([first, second], (await GetAsync(providerId)).Models[0].TagIds);
+    }
+
+    // ───── 名称：同租户内唯一 ─────
+
+    [Fact]
+    public async Task Create_DuplicateName_SameTenant_Throws_AndSavesNothing()
     {
         var name = $"dup-{Guid.NewGuid():N}";
         await TestDataFactory.CreateModelProviderAsync(_host, name);
 
         var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => TestDataFactory.CreateModelProviderAsync(_host, name));
+            () => CreateAsync(TestDataFactory.Provider(name, models: [TestDataFactory.Model("glm-5.3")])));
         Assert.Contains("已存在", ex.Message);
+
+        // 什么都不保存：列表里只有先建的那一个
+        Assert.Single(await ListAsync(), x => x.Name == name);
     }
 
     [Fact]
@@ -154,53 +173,190 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task List_OrdersByName()
+    public async Task Create_SameName_AfterProviderDeleted_Succeeds()
     {
-        await CreateProviderAsync($"b-{Guid.NewGuid():N}");
-        await CreateProviderAsync($"a-{Guid.NewGuid():N}");
+        // 软删过滤生效：删掉后同名可重建（索引非唯一，见 ADR 0001）
+        var name = $"recreate-{Guid.NewGuid():N}";
+        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, name);
 
-        var query = new GetModelProviderListQuery();
-        await _host.PublishAsync(query);
+        await _host.PublishAsync(new DeleteModelProviderCommand(providerId));
+        var recreatedId = await TestDataFactory.CreateModelProviderAsync(_host, name);
 
-        var names = query.Result!.Select(x => x.Name).ToList();
-        Assert.True(names.Count >= 2);
-        Assert.Equal(names.OrderBy(x => x, StringComparer.Ordinal), names);
+        Assert.Equal(name, (await GetAsync(recreatedId)).Name);
     }
 
     [Fact]
-    public async Task List_SummariesEachProvider_ProtocolsModelsAndEndpointCount()
+    public async Task Update_DuplicateName_Throws_AndChangesNothing()
     {
-        var modelHigh = await CreateModelAsync("高分");
-        var modelLow = await CreateModelAsync("低分");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"summary-{Guid.NewGuid():N}");
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId,
-            "官方 Anthropic", ModelProviderProtocol.Anthropic, mappings: [TestDataFactory.Mapping(modelLow, 1)]));
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId,
-            "官方 OpenAI", mappings: [TestDataFactory.Mapping(modelHigh, 99), TestDataFactory.Mapping(modelLow, 50)]));
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "中转", mappings: [TestDataFactory.Mapping(modelHigh, 5)]));
+        var takenName = $"taken-{Guid.NewGuid():N}";
+        await TestDataFactory.CreateModelProviderAsync(_host, takenName);
+        var originalName = $"other-{Guid.NewGuid():N}";
+        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, originalName);
 
-        var query = new GetModelProviderListQuery();
-        await _host.PublishAsync(query);
-        var row = query.Result!.Single(x => x.Id == providerId);
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateAsync(providerId, TestDataFactory.ProviderUpdate(takenName)));
+        Assert.Contains("已存在", ex.Message);
 
-        // 协议去重并按枚举顺序；模型跨接入点去重、分数高的在前；接入点数是全部接入点
-        Assert.Equal([ModelProviderProtocol.OpenAIChatCompletion, ModelProviderProtocol.Anthropic], row.Protocols);
-        Assert.Equal(3, row.EndpointCount);
-        Assert.True(row.ModelDisplayNames.Count == 2);
-        Assert.Contains("高分", row.ModelDisplayNames[0]);
-        Assert.Contains("低分", row.ModelDisplayNames[1]);
+        var provider = await GetAsync(providerId);
+        Assert.Equal(originalName, provider.Name);
     }
+
+    [Fact]
+    public async Task Update_RenamesProvider_AndKeepsModels()
+    {
+        var providerId = await CreateAsync(TestDataFactory.Provider(models: [TestDataFactory.Model("glm-5.3")]));
+
+        await UpdateAsync(providerId, TestDataFactory.ProviderUpdate("改名后的提供方", models: [TestDataFactory.Model("glm-5.3")]));
+
+        var provider = await GetAsync(providerId);
+        Assert.Equal("改名后的提供方", provider.Name);
+        Assert.Equal(["glm-5.3"], provider.Models.Select(x => x.Name).ToList());
+    }
+
+    // ───── 协议：可以修改，设置子类型必须跟着一致 ─────
+
+    [Fact]
+    public async Task Update_ChangesProtocolAndSetting_KeepsModels()
+    {
+        var providerId = await CreateAsync(TestDataFactory.Provider(models: [TestDataFactory.Model("glm-5.3")]));
+
+        // 换协议不用删掉提供方重建：连接字段整体替换，名下模型原样保留
+        await UpdateAsync(providerId, TestDataFactory.ProviderUpdate(
+            protocol: ModelProviderProtocol.Anthropic,
+            models: [TestDataFactory.Model("glm-5.3")],
+            baseUrl: "https://api.anthropic.com",
+            apiKey: "ak-new"));
+
+        var provider = await GetAsync(providerId);
+        Assert.Equal(ModelProviderProtocol.Anthropic, provider.Protocol);
+        Assert.Equal("https://api.anthropic.com", provider.BaseUrl);
+        Assert.Equal("ak-new", provider.ApiKey);
+        Assert.Equal("2023-06-01", Assert.IsType<AnthropicModelProviderSetting>(provider.Setting).Version);
+        Assert.Equal(["glm-5.3"], provider.Models.Select(x => x.Name).ToList());
+    }
+
+    // ───── 模型：随提供方整体同步，以名称为键 ─────
+
+    [Fact]
+    public async Task Update_SyncsModels_UpdatesKeepsAddsRemoves()
+    {
+        var tagId = await TestDataFactory.CreateTagAsync(_host, $"sync-{Guid.NewGuid():N}");
+        var providerId = await CreateAsync(TestDataFactory.Provider(models:
+        [
+            TestDataFactory.Model("keep", "旧描述"),
+            TestDataFactory.Model("remove"),
+        ]));
+        var keptId = (await GetAsync(providerId)).Models[0].Id;
+
+        await UpdateAsync(providerId, TestDataFactory.ProviderUpdate(models:
+        [
+            // 名称已存在：只更新描述与标签，仍是原来那一条
+            TestDataFactory.Model("keep", "新描述", [tagId]),
+            TestDataFactory.Model("add"),
+        ]));
+
+        var provider = await GetAsync(providerId);
+        Assert.Equal(["add", "keep"], provider.Models.Select(x => x.Name).ToList());
+        var kept = provider.Models[1];
+        Assert.Equal(keptId, kept.Id);
+        Assert.Equal("新描述", kept.Description);
+        Assert.Equal([tagId], kept.TagIds);
+    }
+
+    [Fact]
+    public async Task Update_DuplicateModelNames_Throws_AndChangesNothing()
+    {
+        var providerId = await CreateAsync(TestDataFactory.Provider(models: [TestDataFactory.Model("glm-5.3")]));
+
+        // 同一提供方下模型名称不重复是聚合内部不变量
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateAsync(providerId, TestDataFactory.ProviderUpdate(
+            baseUrl: "https://changed",
+            models: [TestDataFactory.Model("glm-5.3"), TestDataFactory.Model("glm-5.3")])));
+        Assert.Contains("只能添加一次", ex.Message);
+
+        var provider = await GetAsync(providerId);
+        Assert.Equal("https://api.openai.com/v1", provider.BaseUrl);
+        Assert.Equal(["glm-5.3"], provider.Models.Select(x => x.Name).ToList());
+    }
+
+    [Fact]
+    public async Task Create_DuplicateModelNames_Throws_AndSavesNothing()
+    {
+        var name = $"twice-{Guid.NewGuid():N}";
+
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => CreateAsync(TestDataFactory.Provider(name, models:
+            [TestDataFactory.Model("glm-5.3"), TestDataFactory.Model("glm-5.3")])));
+        Assert.Contains("只能添加一次", ex.Message);
+
+        Assert.False(await ExistsByNameAsync(name));
+    }
+
+    [Fact]
+    public async Task SameModelName_InTwoProviders_Succeeds()
+    {
+        // 智谱的 OpenAI 兼容与 Anthropic 兼容各建一个提供方：两个提供方下的同名模型互不相干
+        var openAiId = await CreateAsync(TestDataFactory.Provider($"openai-{Guid.NewGuid():N}", models: [TestDataFactory.Model("glm-5.3")]));
+        var anthropicId = await CreateAsync(TestDataFactory.Provider(
+            $"anthropic-{Guid.NewGuid():N}", ModelProviderProtocol.Anthropic, models: [TestDataFactory.Model("glm-5.3")]));
+
+        Assert.Equal(["glm-5.3"], (await GetAsync(openAiId)).Models.Select(x => x.Name).ToList());
+        Assert.Equal(["glm-5.3"], (await GetAsync(anthropicId)).Models.Select(x => x.Name).ToList());
+    }
+
+    [Fact]
+    public async Task Update_WithoutModels_RemovesAll_KeepsProvider()
+    {
+        var originalName = $"empty-{Guid.NewGuid():N}";
+        var providerId = await CreateAsync(TestDataFactory.Provider(originalName, models: [TestDataFactory.Model("glm-5.3")]));
+
+        // 不带模型提交：名下模型全部移除，连接信息按请求体更新
+        await UpdateAsync(providerId, TestDataFactory.ProviderUpdate(originalName));
+
+        var provider = await GetAsync(providerId);
+        Assert.Empty(provider.Models);
+        Assert.Equal(originalName, provider.Name);
+    }
+
+    // ───── 标签：引用必须存在 ─────
+
+    [Fact]
+    public async Task Create_WithNonexistentTag_Throws_AndSavesNothing()
+    {
+        var name = $"tag-{Guid.NewGuid():N}";
+        var provider = TestDataFactory.Provider(name, models:
+        [
+            TestDataFactory.Model("glm-5.3"),
+            TestDataFactory.Model("qwen", tagIds: [999999]),
+        ]);
+
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => CreateAsync(provider));
+        Assert.Contains("标签不存在", ex.Message);
+
+        Assert.False(await ExistsByNameAsync(name));
+    }
+
+    [Fact]
+    public async Task Update_WithNonexistentTag_Throws_AndChangesNothing()
+    {
+        var tagId = await TestDataFactory.CreateTagAsync(_host, $"upd-{Guid.NewGuid():N}");
+        var providerId = await CreateAsync(TestDataFactory.Provider(models: [TestDataFactory.Model("glm-5.3", tagIds: [tagId])]));
+
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateAsync(providerId, TestDataFactory.ProviderUpdate(
+            models: [TestDataFactory.Model("glm-5.3", tagIds: [tagId]), TestDataFactory.Model("qwen", tagIds: [999999])])));
+        Assert.Contains("标签不存在", ex.Message);
+
+        Assert.Equal([tagId], (await GetAsync(providerId)).Models[0].TagIds);
+    }
+
+    // ───── 删除 / 隔离 / 列表 ─────
 
     [Fact]
     public async Task Delete_RemovesProvider()
     {
-        var provider = await CreateProviderAsync($"del-{Guid.NewGuid():N}");
+        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"del-{Guid.NewGuid():N}");
 
-        await _host.PublishAsync(new DeleteModelProviderCommand(provider.Id));
+        await _host.PublishAsync(new DeleteModelProviderCommand(providerId));
 
-        var query = new GetModelProviderQuery(provider.Id);
-        await _host.PublishAsync(query);
-        Assert.Null(query.Result);
+        Assert.Null(await TestDataFactory.GetModelProviderAsync(_host, providerId));
     }
 
     [Fact]
@@ -211,441 +367,58 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task Delete_Provider_RemovesEndpointsAndMappings_ThenModelCanBeDeleted()
+    public async Task Update_NonexistentProvider_Throws()
     {
-        var modelId = await CreateModelAsync("级联");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"cascade-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings: [TestDataFactory.Mapping(modelId)]));
-
-        await _host.PublishAsync(new DeleteModelProviderCommand(providerId));
-
-        // 名下的接入点与映射一并删除：列表为空、详情取不到、模型不再被引用可以直接删
-        Assert.Empty(await GetEndpointsAsync(providerId));
-        Assert.Null(await GetEndpointAsync(endpointId));
-        await AssertModelDeletableAsync(modelId);
-    }
-
-    // ───── 接入点：独立的聚合 ─────
-
-    [Fact]
-    public async Task Create_TwoEndpointsWithDifferentProtocols_ReturnsConnectionAndProvider()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"two-{Guid.NewGuid():N}");
-        var openAiId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方 OpenAI"));
-        var anthropicId = await AddEndpointAsync(TestDataFactory.Endpoint(
-            providerId, "官方 Anthropic", ModelProviderProtocol.Anthropic, baseUrl: "https://api.anthropic.com", apiKey: "ak-test"));
-
-        var endpoints = await GetEndpointsAsync(providerId);
-
-        // 接入点按名称排序；地址与密钥在接入点上，协议专属设置在 Setting 里
-        Assert.Equal(["官方 Anthropic", "官方 OpenAI"], endpoints.Select(x => x.Name).ToList());
-
-        var openAi = endpoints.Single(x => x.Id == openAiId);
-        Assert.Equal(providerId, openAi.ModelProviderId);
-        Assert.Equal(ModelProviderProtocol.OpenAIChatCompletion, openAi.Protocol);
-        Assert.Equal("https://api.openai.com/v1", openAi.BaseUrl);
-        Assert.Equal("sk-test", openAi.ApiKey);
-        Assert.Equal("org-1", Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(openAi.Setting).Organization);
-
-        var anthropic = endpoints.Single(x => x.Id == anthropicId);
-        Assert.Equal(ModelProviderProtocol.Anthropic, anthropic.Protocol);
-        Assert.Equal("https://api.anthropic.com", anthropic.BaseUrl);
-        Assert.Equal("ak-test", anthropic.ApiKey);
-        Assert.Equal("2023-06-01", Assert.IsType<AnthropicModelProviderEndpointSetting>(anthropic.Setting).Version);
-    }
-
-    [Fact]
-    public async Task Create_OpenAIResponseEndpoint_StoresResponseSetting()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"response-{Guid.NewGuid():N}");
-        await AddEndpointAsync(TestDataFactory.Endpoint(
-            providerId, "官方 Response", ModelProviderProtocol.OpenAIResponse, baseUrl: "https://api.openai.com/v1"));
-
-        var endpoint = Assert.Single(await GetEndpointsAsync(providerId));
-        Assert.Equal(ModelProviderProtocol.OpenAIResponse, endpoint.Protocol);
-        Assert.Equal("org-1", Assert.IsType<OpenAIResponseModelProviderEndpointSetting>(endpoint.Setting).Organization);
-    }
-
-    [Fact]
-    public async Task Create_WithoutProtocolSpecificFields_StoresNull()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"nulls-{Guid.NewGuid():N}");
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId, setting: new OpenAIChatCompletionModelProviderEndpointSetting()));
-
-        var endpoint = Assert.Single(await GetEndpointsAsync(providerId));
-        Assert.Null(Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(endpoint.Setting).Organization);
-    }
-
-    [Fact]
-    public async Task Create_OnNonexistentProvider_Throws()
-    {
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => AddEndpointAsync(TestDataFactory.Endpoint(999999)));
+        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateAsync(999999, TestDataFactory.ProviderUpdate("幽灵")));
         Assert.Contains("模型提供方不存在", ex.Message);
     }
 
     [Fact]
-    public async Task GetList_OnNonexistentProvider_ReturnsEmpty()
+    public async Task Provider_OfAnotherTenant_IsInvisible_AndCannotBeTakenOver()
     {
-        Assert.Empty(await GetEndpointsAsync(999999));
-    }
-
-    [Fact]
-    public async Task Get_OnNonexistentEndpoint_ReturnsNull()
-    {
-        Assert.Null(await GetEndpointAsync(999999));
-    }
-
-    [Fact]
-    public async Task Get_ReturnsDetail_WithMappingsByScoreDescAndModelName()
-    {
-        var modelA = await CreateModelAsync("甲");
-        var modelB = await CreateModelAsync("乙");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"detail-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId,
-            "中转", mappings: [TestDataFactory.Mapping(modelA, 10), TestDataFactory.Mapping(modelB, 30, "zhipu/glm")]));
-
-        var endpoint = (await GetEndpointAsync(endpointId))!;
-
-        Assert.Equal(endpointId, endpoint.Id);
-        Assert.Equal(providerId, endpoint.ModelProviderId);
-        Assert.Equal("中转", endpoint.Name);
-        Assert.Equal([modelB, modelA], endpoint.Mappings.Select(x => x.ModelId).ToList());
-        Assert.Contains("模型乙", endpoint.Mappings[0].ModelDisplayName);
-        Assert.Equal("zhipu/glm", endpoint.Mappings[0].ProviderModelName);
-    }
-
-    [Fact]
-    public async Task Update_Endpoint_ChangesConnectionAndSetting_KeepsProtocolAndSiblings()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"upd-ep-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId));
-        var siblingId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "中转", apiKey: "sk-sibling"));
-
-        await UpdateEndpointAsync(endpointId, TestDataFactory.EndpointUpdate(
-            name: "官方（改）", baseUrl: "https://vip.api.openai.com/v1", apiKey: "sk-new"));
-
-        var endpoint = (await GetEndpointAsync(endpointId))!;
-        Assert.Equal("官方（改）", endpoint.Name);
-        Assert.Equal("https://vip.api.openai.com/v1", endpoint.BaseUrl);
-        Assert.Equal("sk-new", endpoint.ApiKey);
-
-        // 协议与归属创建后不可变：更新请求里没有它们，保存后仍是原值
-        Assert.Equal(ModelProviderProtocol.OpenAIChatCompletion, endpoint.Protocol);
-        Assert.Equal(providerId, endpoint.ModelProviderId);
-
-        // 只动这一个接入点：其余接入点原样
-        var sibling = (await GetEndpointsAsync(providerId)).Single(x => x.Id == siblingId);
-        Assert.Equal("中转", sibling.Name);
-        Assert.Equal("sk-sibling", sibling.ApiKey);
-    }
-
-    [Fact]
-    public async Task Update_EndpointWithSettingOfAnotherProtocol_Throws_AndChangesNothing()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"mismatch-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId));
-
-        // 协议专属设置的子类型必须与接入点现有协议一致
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateEndpointAsync(
-            endpointId, TestDataFactory.EndpointUpdate(name: "改不动", setting: new AnthropicModelProviderEndpointSetting())));
-        Assert.Contains("协议与设置类型不匹配", ex.Message);
-
-        Assert.Equal("官方", (await GetEndpointAsync(endpointId))!.Name);
-    }
-
-    [Fact]
-    public async Task Update_WithUnknownEndpointId_Throws()
-    {
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => UpdateEndpointAsync(999999, TestDataFactory.EndpointUpdate("幽灵")));
-        Assert.Contains("接入点不存在", ex.Message);
-    }
-
-    [Fact]
-    public async Task Delete_WithUnknownEndpointId_Throws()
-    {
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => RemoveEndpointAsync(999999));
-        Assert.Contains("接入点不存在", ex.Message);
-    }
-
-    [Fact]
-    public async Task Create_DuplicateEndpointName_SameProvider_Throws_AndSavesNothing()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"same-ep-{Guid.NewGuid():N}");
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方"));
-
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方")));
-        Assert.Contains("接入点", ex.Message);
-
-        Assert.Single(await GetEndpointsAsync(providerId));
-    }
-
-    [Fact]
-    public async Task Update_EndpointNameToSiblingName_Throws_AndChangesNothing()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"sibling-{Guid.NewGuid():N}");
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方"));
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "中转"));
-
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => UpdateEndpointAsync(endpointId, TestDataFactory.EndpointUpdate("官方")));
-        Assert.Contains("接入点", ex.Message);
-
-        Assert.Equal(["官方", "中转"], (await GetEndpointsAsync(providerId)).Select(x => x.Name).ToList());
-    }
-
-    [Fact]
-    public async Task Create_SameEndpointName_DifferentProviders_Succeeds()
-    {
-        var firstId = await TestDataFactory.CreateModelProviderAsync(_host, $"ep-a-{Guid.NewGuid():N}");
-        var secondId = await TestDataFactory.CreateModelProviderAsync(_host, $"ep-b-{Guid.NewGuid():N}");
-
-        await AddEndpointAsync(TestDataFactory.Endpoint(firstId, "官方"));
-        await AddEndpointAsync(TestDataFactory.Endpoint(secondId, "官方"));
-
-        Assert.Single(await GetEndpointsAsync(firstId));
-        Assert.Single(await GetEndpointsAsync(secondId));
-    }
-
-    [Fact]
-    public async Task Create_SameName_AfterEndpointDeleted_Succeeds()
-    {
-        // 软删过滤生效：删掉后同名可重建（索引非唯一，见 ADR 0001）
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"recreate-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方"));
-
-        await RemoveEndpointAsync(endpointId);
-        var recreatedId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方"));
-
-        Assert.Equal([recreatedId], (await GetEndpointsAsync(providerId)).Select(x => x.Id).ToList());
-    }
-
-    [Fact]
-    public async Task Delete_LastEndpoint_LeavesProvider()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"last-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId));
-
-        await RemoveEndpointAsync(endpointId);
-
-        Assert.Empty(await GetEndpointsAsync(providerId));
-        Assert.NotNull((await GetProviderAsync(providerId)).Id);
-    }
-
-    [Fact]
-    public async Task Endpoints_OfAnotherTenant_AreInvisible_AndCannotBeTakenOver()
-    {
-        long tenant1ProviderId = 0;
-        long tenant1EndpointId = 0;
-        await WithTenantAsync(1, async () =>
-        {
-            tenant1ProviderId = await TestDataFactory.CreateModelProviderAsync(_host, $"租户一提供商-{Guid.NewGuid():N}");
-            tenant1EndpointId = await AddEndpointAsync(TestDataFactory.Endpoint(tenant1ProviderId));
-        });
-
-        // 租户 0 看不到租户 1 的提供方与接入点：新建按「提供方不存在」被拒，修改 / 删除按「接入点不存在」被拒，读取为空
-        var createEx = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => AddEndpointAsync(TestDataFactory.Endpoint(tenant1ProviderId)));
-        Assert.Contains("模型提供方不存在", createEx.Message);
-
-        var updateEx = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => UpdateEndpointAsync(tenant1EndpointId, TestDataFactory.EndpointUpdate("抢占")));
-        Assert.Contains("接入点不存在", updateEx.Message);
-
-        var deleteEx = await Assert.ThrowsAsync<UserFriendlyException>(() => RemoveEndpointAsync(tenant1EndpointId));
-        Assert.Contains("接入点不存在", deleteEx.Message);
-
-        Assert.Empty(await GetEndpointsAsync(tenant1ProviderId));
-        Assert.Null(await GetEndpointAsync(tenant1EndpointId));
-
-        await WithTenantAsync(1, async () =>
-        {
-            Assert.Equal("官方", (await GetEndpointAsync(tenant1EndpointId))!.Name);
-        });
-    }
-
-    // ───── 提供商映射：随接入点 ─────
-
-    [Fact]
-    public async Task Create_WithMappings_ReturnsThemByScoreDesc_WithModelName()
-    {
-        var modelA = await CreateModelAsync("甲");
-        var modelB = await CreateModelAsync("乙");
-        var modelC = await CreateModelAsync("丙");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"map-{Guid.NewGuid():N}");
-
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings:
-        [
-            TestDataFactory.Mapping(modelA, 10),
-            TestDataFactory.Mapping(modelB, 30, "zhipu/glm-5.3"),
-            TestDataFactory.Mapping(modelC, 10),
-        ]));
-
-        var endpoint = (await GetEndpointsAsync(providerId)).Single(x => x.Id == endpointId);
-
-        // 分数高的排前面；分数只是排序依据，不要求唯一（甲、丙同为 10）
-        Assert.Equal([modelB, modelA, modelC], endpoint.Mappings.Select(x => x.ModelId).ToList());
-        Assert.Equal([30, 10, 10], endpoint.Mappings.Select(x => x.Priority).ToList());
-
-        // 模型显示名称由查询侧回填；未填提供商侧模型名时为空字符串（表示回落模型名称）
-        var top = endpoint.Mappings[0];
-        Assert.Contains("模型乙", top.ModelDisplayName);
-        Assert.Equal("zhipu/glm-5.3", top.ProviderModelName);
-        Assert.Equal(string.Empty, endpoint.Mappings[1].ProviderModelName);
-    }
-
-    [Fact]
-    public async Task Create_SameModelTwice_InOneEndpoint_Throws_AndSavesNothing()
-    {
-        var modelId = await CreateModelAsync("重复");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"twice-{Guid.NewGuid():N}");
-
-        // 一个接入点对一个模型只保留一条映射：聚合内部不变量
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(() => AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings:
-        [
-            TestDataFactory.Mapping(modelId, 10),
-            TestDataFactory.Mapping(modelId, 20),
-        ])));
-        Assert.Contains("只能映射一次", ex.Message);
-
-        Assert.Empty(await GetEndpointsAsync(providerId));
-    }
-
-    [Fact]
-    public async Task Create_SameModel_InTwoEndpointsOfOneProvider_Succeeds()
-    {
-        // 同一个模型既走 OpenAI 兼容、又走 Anthropic 兼容：映射归接入点，跨接入点不重复受限
-        var modelId = await CreateModelAsync("双协议");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"dual-{Guid.NewGuid():N}");
-
-        await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "官方 OpenAI", mappings: [TestDataFactory.Mapping(modelId)]));
-        await AddEndpointAsync(TestDataFactory.Endpoint(
-            providerId, "官方 Anthropic", ModelProviderProtocol.Anthropic, mappings: [TestDataFactory.Mapping(modelId, providerModelName: "glm-5.3")]));
-
-        var endpoints = await GetEndpointsAsync(providerId);
-        Assert.Equal(2, endpoints.Count);
-        Assert.All(endpoints, x => Assert.Equal([modelId], x.Mappings.Select(m => m.ModelId).ToList()));
-    }
-
-    [Fact]
-    public async Task SameModelAndScore_AcrossProviders_IsAllowed()
-    {
-        var modelId = await CreateModelAsync("同分");
-        var firstId = await TestDataFactory.CreateModelProviderAsync(_host, $"same-a-{Guid.NewGuid():N}");
-        var secondId = await TestDataFactory.CreateModelProviderAsync(_host, $"same-b-{Guid.NewGuid():N}");
-
-        await AddEndpointAsync(TestDataFactory.Endpoint(firstId, mappings: [TestDataFactory.Mapping(modelId, 10)]));
-        await AddEndpointAsync(TestDataFactory.Endpoint(secondId, mappings: [TestDataFactory.Mapping(modelId, 10)]));
-
-        // 同一个模型被两个提供方以相同分数接入：路由时再按分数排序取第一个
-        Assert.Single(Assert.Single(await GetEndpointsAsync(firstId)).Mappings);
-        Assert.Single(Assert.Single(await GetEndpointsAsync(secondId)).Mappings);
-    }
-
-    [Fact]
-    public async Task Create_WithNonexistentModel_Throws_AndSavesNothing()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"missing-{Guid.NewGuid():N}");
-
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings: [TestDataFactory.Mapping(999999)])));
-        Assert.Contains("模型不存在", ex.Message);
-
-        Assert.Empty(await GetEndpointsAsync(providerId));
-    }
-
-    [Fact]
-    public async Task Update_WithNonexistentModel_Throws_AndChangesNothing()
-    {
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"missing-upd-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId));
-
-        var ex = await Assert.ThrowsAsync<UserFriendlyException>(
-            () => UpdateEndpointAsync(endpointId, TestDataFactory.EndpointUpdate("改不动", mappings: [TestDataFactory.Mapping(999999)])));
-        Assert.Contains("模型不存在", ex.Message);
-
-        Assert.Equal("官方", (await GetEndpointAsync(endpointId))!.Name);
-    }
-
-    [Fact]
-    public async Task Update_SyncsMappings_UpdatesKeepsAddsRemoves()
-    {
-        var modelA = await CreateModelAsync("留");
-        var modelB = await CreateModelAsync("删");
-        var modelC = await CreateModelAsync("增");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"sync-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings:
-        [
-            TestDataFactory.Mapping(modelA, 10),
-            TestDataFactory.Mapping(modelB, 20),
-        ]));
-
-        await UpdateEndpointAsync(endpointId, TestDataFactory.EndpointUpdate(mappings:
-        [
-            TestDataFactory.Mapping(modelA, 99, "renamed-model"),
-            TestDataFactory.Mapping(modelC, 5),
-        ]));
-
-        var endpoint = (await GetEndpointAsync(endpointId))!;
-
-        // 甲更新、丙新增、乙移除
-        Assert.Equal([modelA, modelC], endpoint.Mappings.Select(x => x.ModelId).ToList());
-        Assert.Equal(99, endpoint.Mappings[0].Priority);
-        Assert.Equal("renamed-model", endpoint.Mappings[0].ProviderModelName);
-
-        // 被移除的映射不再挡住模型删除
-        await AssertModelDeletableAsync(modelB);
-    }
-
-    [Fact]
-    public async Task Delete_Endpoint_RemovesItsMappings_ThenModelCanBeDeleted()
-    {
-        var modelId = await CreateModelAsync("接入点级联");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"ep-del-{Guid.NewGuid():N}");
-        var endpointId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, mappings: [TestDataFactory.Mapping(modelId)]));
-
-        await RemoveEndpointAsync(endpointId);
-
-        // 该接入点的映射一并删除：模型不再被引用，可以直接删
-        Assert.Empty(await GetEndpointsAsync(providerId));
-        await AssertModelDeletableAsync(modelId);
-    }
-
-    [Fact]
-    public async Task Delete_OneEndpoint_KeepsSiblingsMappings()
-    {
-        var modelId = await CreateModelAsync("保留兄弟");
-        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"keep-sibling-{Guid.NewGuid():N}");
-        var doomedId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "甲"));
-        var siblingId = await AddEndpointAsync(TestDataFactory.Endpoint(providerId, "乙", mappings: [TestDataFactory.Mapping(modelId)]));
-
-        await RemoveEndpointAsync(doomedId);
-
-        // 只删这一个：兄弟接入点与它的映射原样，模型仍被引用、删除被拒
-        var sibling = (await GetEndpointAsync(siblingId))!;
-        Assert.Equal("乙", sibling.Name);
-        Assert.Equal([modelId], sibling.Mappings.Select(x => x.ModelId).ToList());
-        await AssertModelDeleteRejectedAsync(modelId);
-    }
-
-    [Fact]
-    public async Task Mappings_AreIsolatedPerTenant()
-    {
-        var modelId = await CreateModelAsync("隔离");
-
         long tenant1ProviderId = 0;
         await WithTenantAsync(1, async () =>
         {
             tenant1ProviderId = await TestDataFactory.CreateModelProviderAsync(_host, $"租户一提供商-{Guid.NewGuid():N}");
-            await AddEndpointAsync(TestDataFactory.Endpoint(tenant1ProviderId, mappings: [TestDataFactory.Mapping(modelId)]));
-            Assert.Single(Assert.Single(await GetEndpointsAsync(tenant1ProviderId)).Mappings);
         });
 
-        // 租户 0 的提供商列表里没有别家租户的提供方，自然也看不到它的接入点与映射
-        var list = new GetModelProviderListQuery();
-        await _host.PublishAsync(list);
-        Assert.DoesNotContain(list.Result!, x => x.Id == tenant1ProviderId);
+        // 租户 0 看不到租户 1 的提供方：读取为空，修改 / 删除按「模型提供方不存在」被拒
+        Assert.Null(await TestDataFactory.GetModelProviderAsync(_host, tenant1ProviderId));
+        Assert.DoesNotContain(await ListAsync(), x => x.Id == tenant1ProviderId);
+
+        var updateEx = await Assert.ThrowsAsync<UserFriendlyException>(() => UpdateAsync(tenant1ProviderId, TestDataFactory.ProviderUpdate("抢占")));
+        Assert.Contains("模型提供方不存在", updateEx.Message);
+
+        var deleteEx = await Assert.ThrowsAsync<UserFriendlyException>(() => _host.PublishAsync(new DeleteModelProviderCommand(tenant1ProviderId)));
+        Assert.Contains("模型提供方不存在", deleteEx.Message);
+
+        await WithTenantAsync(1, async () =>
+        {
+            Assert.NotNull(await TestDataFactory.GetModelProviderAsync(_host, tenant1ProviderId));
+        });
+    }
+
+    [Fact]
+    public async Task List_OrdersByName()
+    {
+        await TestDataFactory.CreateModelProviderAsync(_host, $"b-{Guid.NewGuid():N}");
+        await TestDataFactory.CreateModelProviderAsync(_host, $"a-{Guid.NewGuid():N}");
+
+        var names = (await ListAsync()).Select(x => x.Name).ToList();
+        Assert.True(names.Count >= 2);
+        Assert.Equal(names.OrderBy(x => x, StringComparer.Ordinal), names);
+    }
+
+    [Fact]
+    public async Task List_RowHasProtocolAndSortedModelNames()
+    {
+        var name = $"summary-{Guid.NewGuid():N}";
+        var providerId = await CreateAsync(TestDataFactory.Provider(
+            name, ModelProviderProtocol.Anthropic, models: [TestDataFactory.Model("qwen"), TestDataFactory.Model("glm-5.3")]));
+
+        var row = (await ListAsync()).Single(x => x.Id == providerId);
+        Assert.Equal(ModelProviderProtocol.Anthropic, row.Protocol);
+        Assert.Equal(["glm-5.3", "qwen"], row.ModelNames);
+        Assert.True(row.Id > 0);
     }
 }

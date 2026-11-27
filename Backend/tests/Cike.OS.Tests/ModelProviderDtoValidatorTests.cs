@@ -1,65 +1,29 @@
-using Cike.OS.Application.ModelProviderEndpoints.Validators;
-using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Validators;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.Json;
 using Cike.OS.Domain.Shared.ValueObjects;
+using Cike.OS.Tests.Infrastructure;
 using FluentValidation.TestHelper;
 using System.Text.Json;
 using Xunit;
 
 namespace Cike.OS.Tests;
 
-/// <summary>模型提供方的输入校验：只有名称（接入点不随提供方提交）。</summary>
-public class ModelProviderDtoValidatorTests
+/// <summary>模型提供方新建输入的校验：连接字段必填、协议专属字段可选、设置的子类必须与协议对应、模型列表可以为空。</summary>
+public class CreateModelProviderDtoValidatorTests
 {
-    [Fact]
-    public void Validate_ValidName_HasNoErrors()
+    private readonly CreateModelProviderDtoValidator _validator = new();
+
+    private static CreateModelProviderDto Valid(Action<CreateModelProviderDto>? mutate = null)
     {
-        new CreateModelProviderDtoValidator().TestValidate(new CreateModelProviderDto { Name = "智谱" })
-            .ShouldNotHaveAnyValidationErrors();
-        new UpdateModelProviderDtoValidator().TestValidate(new UpdateModelProviderDto { Name = "智谱" })
-            .ShouldNotHaveAnyValidationErrors();
+        var dto = TestDataFactory.Provider();
+        mutate?.Invoke(dto);
+        return dto;
     }
 
     [Fact]
-    public void Validate_EmptyName_HasError()
-    {
-        new CreateModelProviderDtoValidator().TestValidate(new CreateModelProviderDto { Name = "" })
-            .ShouldHaveValidationErrorFor(x => x.Name);
-        new UpdateModelProviderDtoValidator().TestValidate(new UpdateModelProviderDto { Name = " " })
-            .ShouldHaveValidationErrorFor(x => x.Name);
-    }
-
-    [Fact]
-    public void Validate_TooLongName_HasError()
-    {
-        var name = new string('x', 129);
-
-        new CreateModelProviderDtoValidator().TestValidate(new CreateModelProviderDto { Name = name })
-            .ShouldHaveValidationErrorFor(x => x.Name);
-    }
-}
-
-/// <summary>接入点新建输入的校验：连接字段必填，协议专属字段可选，设置的子类必须与协议对应。</summary>
-public class CreateModelProviderEndpointDtoValidatorTests
-{
-    private readonly CreateModelProviderEndpointDtoValidator _validator = new();
-
-    private static CreateModelProviderEndpointDto Valid() => new()
-    {
-        ModelProviderId = 1,
-        Name = "官方",
-        Protocol = ModelProviderProtocol.OpenAIChatCompletion,
-        BaseUrl = "https://api.openai.com/v1",
-        ApiKey = "sk-test",
-        // 协议专属字段不填也合法
-        Setting = new OpenAIChatCompletionModelProviderEndpointSetting(),
-    };
-
-    [Fact]
-    public void Validate_ValidEndpoint_HasNoErrors()
+    public void Validate_ValidProvider_HasNoErrors()
     {
         _validator.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
     }
@@ -67,98 +31,89 @@ public class CreateModelProviderEndpointDtoValidatorTests
     [Fact]
     public void Validate_EmptyName_HasError()
     {
-        var dto = Valid();
-        dto.Name = "";
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Name);
+        _validator.TestValidate(Valid(dto => dto.Name = "")).ShouldHaveValidationErrorFor(x => x.Name);
     }
 
     [Fact]
-    public void Validate_MissingProvider_HasError()
+    public void Validate_TooLongName_HasError()
     {
-        var dto = Valid();
-        dto.ModelProviderId = 0;
-    
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.ModelProviderId);
+        _validator.TestValidate(Valid(dto => dto.Name = new string('x', 129))).ShouldHaveValidationErrorFor(x => x.Name);
     }
-    
+
     [Fact]
     public void Validate_UnknownProtocol_HasError()
     {
-        var dto = Valid();
-        dto.Protocol = (ModelProviderProtocol)99;
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Protocol);
+        _validator.TestValidate(Valid(dto => dto.Protocol = (ModelProviderProtocol)99)).ShouldHaveValidationErrorFor(x => x.Protocol);
     }
 
     [Fact]
     public void Validate_MissingBaseUrl_HasError()
     {
-        var dto = Valid();
-        dto.BaseUrl = " ";
+        _validator.TestValidate(Valid(dto => dto.BaseUrl = " ")).ShouldHaveValidationErrorFor(x => x.BaseUrl);
+    }
 
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.BaseUrl);
+    [Fact]
+    public void Validate_BaseUrlThatIsNotAUrl_HasNoErrors()
+    {
+        // 供应商的兼容地址写法不统一，只校验必填、不校验 URL 格式
+        _validator.TestValidate(Valid(dto => dto.BaseUrl = "localhost:11434/v1")).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Validate_MissingApiKey_HasError()
     {
-        var dto = Valid();
-        dto.ApiKey = "";
+        _validator.TestValidate(Valid(dto => dto.ApiKey = "")).ShouldHaveValidationErrorFor(x => x.ApiKey);
+    }
 
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.ApiKey);
+    [Fact]
+    public void Validate_LongApiKey_HasNoErrors()
+    {
+        _validator.TestValidate(Valid(dto => dto.ApiKey = new string('k', 4096))).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Validate_NullSetting_HasError()
     {
-        var dto = Valid();
-        dto.Setting = null!;
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Setting");
+        _validator.TestValidate(Valid(dto => dto.Setting = null!)).ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]
     public void Validate_ProtocolMismatch_HasError()
     {
         // 子类由判别键决定：声明 OpenAI 协议却带着 Anthropic 的设置
-        var dto = Valid();
-        dto.Setting = new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" };
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Setting");
+        _validator.TestValidate(Valid(dto => dto.Setting = new AnthropicModelProviderSetting { Version = "2023-06-01" }))
+            .ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]
     public void Validate_AnthropicWithProtocolSpecificField_HasNoErrors()
     {
-        var dto = Valid();
-        dto.Protocol = ModelProviderProtocol.Anthropic;
-        dto.Setting = new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" };
-
-        _validator.TestValidate(dto).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(Valid(dto =>
+        {
+            dto.Protocol = ModelProviderProtocol.Anthropic;
+            dto.Setting = new AnthropicModelProviderSetting { Version = "2023-06-01" };
+        })).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Validate_OpenAIResponseWithItsSetting_HasNoErrors()
     {
-        var dto = Valid();
-        dto.Protocol = ModelProviderProtocol.OpenAIResponse;
-        dto.Setting = new OpenAIResponseModelProviderEndpointSetting { Organization = "org-1" };
-
-        _validator.TestValidate(dto).ShouldNotHaveAnyValidationErrors();
+        _validator.TestValidate(Valid(dto =>
+        {
+            dto.Protocol = ModelProviderProtocol.OpenAIResponse;
+            dto.Setting = new OpenAIResponseModelProviderSetting { Organization = "org-1" };
+        })).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Validate_OpenAIProtocolsHaveDistinctSettings_MismatchHasError()
     {
         // 两种 OpenAI 协议各自对应一个设置子类，互换即不匹配
-        var responseWithChatSetting = Valid();
-        responseWithChatSetting.Protocol = ModelProviderProtocol.OpenAIResponse;
-        _validator.TestValidate(responseWithChatSetting).ShouldHaveValidationErrorFor("Setting");
+        _validator.TestValidate(Valid(dto => dto.Protocol = ModelProviderProtocol.OpenAIResponse))
+            .ShouldHaveValidationErrorFor("Setting");
 
-        var chatWithResponseSetting = Valid();
-        chatWithResponseSetting.Setting = new OpenAIResponseModelProviderEndpointSetting();
-        _validator.TestValidate(chatWithResponseSetting).ShouldHaveValidationErrorFor("Setting");
+        _validator.TestValidate(Valid(dto => dto.Setting = new OpenAIResponseModelProviderSetting()))
+            .ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]
@@ -166,52 +121,73 @@ public class CreateModelProviderEndpointDtoValidatorTests
     {
         // 判别键未知：STJ 反序列化直接失败（HTTP 层 400），根本到不了 Validator
         Assert.ThrowsAny<JsonException>(() =>
-            JsonHelper.Deserialize<ModelProviderEndpointSetting>("""{"type":99,"organization":"o"}"""));
+            JsonHelper.Deserialize<ModelProviderSetting>("""{"type":99,"organization":"o"}"""));
     }
 
     [Fact]
-    public void Validate_NullMappings_HasError()
+    public void Validate_NullModels_HasError()
     {
-        var dto = Valid();
-        dto.Mappings = null!;
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Mappings);
+        _validator.TestValidate(Valid(dto => dto.Models = null!)).ShouldHaveValidationErrorFor(x => x.Models);
     }
 
     [Fact]
-    public void Validate_MappingWithoutModel_HasError()
+    public void Validate_EmptyModels_HasNoErrors()
     {
-        var dto = Valid();
-        dto.Mappings = [new SaveModelProviderMappingDto { ModelId = 0, Priority = 10 }];
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Mappings[0].ModelId");
+        _validator.TestValidate(Valid(dto => dto.Models = [])).ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void Validate_TooLongProviderModelName_HasError()
+    public void Validate_ModelWithoutName_HasError()
     {
-        var dto = Valid();
-        dto.Mappings = [new SaveModelProviderMappingDto { ModelId = 1, ProviderModelName = new string('x', 129) }];
+        _validator.TestValidate(Valid(dto => dto.Models = [TestDataFactory.Model("")]))
+            .ShouldHaveValidationErrorFor("Models[0].Name");
+    }
 
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Mappings[0].ProviderModelName");
+    [Fact]
+    public void Validate_TooLongModelName_HasError()
+    {
+        _validator.TestValidate(Valid(dto => dto.Models = [TestDataFactory.Model(new string('x', 129))]))
+            .ShouldHaveValidationErrorFor("Models[0].Name");
+    }
+
+    [Fact]
+    public void Validate_TooLongDescription_HasError()
+    {
+        _validator.TestValidate(Valid(dto => dto.Models = [TestDataFactory.Model("glm-5.3", new string('d', 2049))]))
+            .ShouldHaveValidationErrorFor("Models[0].Description");
+    }
+
+    [Fact]
+    public void Validate_NullTagIds_HasError()
+    {
+        var model = TestDataFactory.Model("glm-5.3");
+        model.TagIds = null!;
+
+        _validator.TestValidate(Valid(dto => dto.Models = [model])).ShouldHaveValidationErrorFor("Models[0].TagIds");
+    }
+
+    [Fact]
+    public void Validate_TagIdZero_HasError()
+    {
+        _validator.TestValidate(Valid(dto => dto.Models = [TestDataFactory.Model("glm-5.3", tagIds: [0])]))
+            .ShouldHaveValidationErrorFor("Models[0].TagIds[0]");
     }
 }
 
-/// <summary>接入点更新输入的校验：连接字段与映射项同新建，没有协议；设置非空，子类型是否与现有协议一致由聚合裁决。</summary>
-public class UpdateModelProviderEndpointDtoValidatorTests
+/// <summary>模型提供方更新输入的校验：与新建同形（协议可改，所以也在请求体里）。</summary>
+public class UpdateModelProviderDtoValidatorTests
 {
-    private readonly UpdateModelProviderEndpointDtoValidator _validator = new();
+    private readonly UpdateModelProviderDtoValidator _validator = new();
 
-    private static UpdateModelProviderEndpointDto Valid() => new()
+    private static UpdateModelProviderDto Valid(Action<UpdateModelProviderDto>? mutate = null)
     {
-        Name = "官方",
-        BaseUrl = "https://api.openai.com/v1",
-        ApiKey = "sk-test",
-        Setting = new OpenAIChatCompletionModelProviderEndpointSetting(),
-    };
+        var dto = TestDataFactory.ProviderUpdate();
+        mutate?.Invoke(dto);
+        return dto;
+    }
 
     [Fact]
-    public void Validate_ValidEndpoint_HasNoErrors()
+    public void Validate_ValidProvider_HasNoErrors()
     {
         _validator.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
     }
@@ -219,47 +195,51 @@ public class UpdateModelProviderEndpointDtoValidatorTests
     [Fact]
     public void Validate_EmptyName_HasError()
     {
-        var dto = Valid();
-        dto.Name = "";
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Name);
+        _validator.TestValidate(Valid(dto => dto.Name = "")).ShouldHaveValidationErrorFor(x => x.Name);
     }
 
     [Fact]
     public void Validate_MissingBaseUrlAndApiKey_HasErrors()
     {
-        var dto = Valid();
-        dto.BaseUrl = " ";
-        dto.ApiKey = "";
+        var result = _validator.TestValidate(Valid(dto =>
+        {
+            dto.BaseUrl = " ";
+            dto.ApiKey = "";
+        }));
 
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.BaseUrl);
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.ApiKey);
+        result.ShouldHaveValidationErrorFor(x => x.BaseUrl);
+        result.ShouldHaveValidationErrorFor(x => x.ApiKey);
+    }
+
+    [Fact]
+    public void Validate_UnknownProtocol_HasError()
+    {
+        _validator.TestValidate(Valid(dto => dto.Protocol = (ModelProviderProtocol)99)).ShouldHaveValidationErrorFor(x => x.Protocol);
     }
 
     [Fact]
     public void Validate_NullSetting_HasError()
     {
-        var dto = Valid();
-        dto.Setting = null!;
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Setting);
+        _validator.TestValidate(Valid(dto => dto.Setting = null!)).ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]
-    public void Validate_NullMappings_HasError()
+    public void Validate_ProtocolMismatch_HasError()
     {
-        var dto = Valid();
-        dto.Mappings = null!;
-
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Mappings);
+        _validator.TestValidate(Valid(dto => dto.Setting = new AnthropicModelProviderSetting()))
+            .ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]
-    public void Validate_MappingWithoutModel_HasError()
+    public void Validate_NullModels_HasError()
     {
-        var dto = Valid();
-        dto.Mappings = [new SaveModelProviderMappingDto { ModelId = 0, Priority = 10 }];
+        _validator.TestValidate(Valid(dto => dto.Models = null!)).ShouldHaveValidationErrorFor(x => x.Models);
+    }
 
-        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Mappings[0].ModelId");
+    [Fact]
+    public void Validate_ModelWithoutName_HasError()
+    {
+        _validator.TestValidate(Valid(dto => dto.Models = [TestDataFactory.Model("")]))
+            .ShouldHaveValidationErrorFor("Models[0].Name");
     }
 }

@@ -1,9 +1,21 @@
 using Cike.Contracts.EntityDtos;
+using Cike.OS.Domain.Shared.Enums;
+using Cike.OS.Domain.Shared.ValueObjects;
 
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
-/// <summary>模型提供方：一个供应商在本租户下的条目，本身只有名称；连接与映射都在它的接入点上，接入点经它自己的列表接口读取。</summary>
+/// <summary>模型提供方：一条连接，连同它提供的全部模型（按名称排序）。</summary>
 public class ModelProviderDto : AuditedEntityDto<long>
 {
     public string Name { get; set; } = null!;
+
+    public ModelProviderProtocol Protocol { get; set; }
+
+    public string BaseUrl { get; set; } = null!;
+
+    public string ApiKey { get; set; } = null!;
+
+    public ModelProviderSetting Setting { get; set; } = null!;
+
+    public List<ModelDto> Models { get; set; } = [];
 }

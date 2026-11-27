@@ -1,7 +1,8 @@
 using Cike.MultiTenancy;
 using Cike.Contracts.EntityDtos;
 using Cike.OS.Application.Contracts.Tags.Dtos;
-using Cike.OS.Application.Models.Queries;
+using Cike.OS.Application.ModelProviders.Commands;
+using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Application.Tags.Commands;
 using Cike.OS.Application.Tags.Queries;
 using Cike.OS.Tests.Infrastructure;
@@ -139,15 +140,17 @@ public class TagTests : IClassFixture<CikeOSTestHost>
     public async Task Delete_ReferencedByModel_Succeeds_AndModelUntouched()
     {
         var tagId = await CreateTagAsync(NewKey(), "被引用");
-        var modelId = await TestDataFactory.CreateModelAsync(_host, $"ref-{Guid.NewGuid():N}", $"引用标签-{Guid.NewGuid():N}", tagIds: [tagId]);
+        var command = new CreateModelProviderCommand(TestDataFactory.Provider(
+            $"ref-{Guid.NewGuid():N}", models: [TestDataFactory.Model("glm-5.3", tagIds: [tagId])]));
+        await _host.PublishAsync(command);
 
         // 没有引用守护：直接删成功
         await _host.PublishAsync(new DeleteTagCommand(tagId));
 
-        var query = new GetModelQuery(modelId);
+        var query = new GetModelProviderQuery(command.Id);
         await _host.PublishAsync(query);
-        // 模型数据不被动，引用仍留在聚合上（列表读取时才被过滤）
-        Assert.Equal([tagId], query.Result!.TagIds);
+        // 模型数据不被动，引用仍留在聚合上（界面回填时才被过滤）
+        Assert.Equal([tagId], Assert.Single(query.Result!.Models).TagIds);
     }
 
     [Fact]

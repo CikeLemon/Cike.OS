@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Cike.OS.Service.Open.Services;
 
-/// <summary>模型提供方：只管提供方自己的名称。接入点是独立的聚合，经它自己的端点类维护。</summary>
+/// <summary>模型提供方：一条连接连同它提供的模型。模型是聚合内子实体，随提供方的请求体进出，没有自己的端点。</summary>
 [AutoValidation]
 public class ModelProviderService : MinimalApiServiceBase
 {
