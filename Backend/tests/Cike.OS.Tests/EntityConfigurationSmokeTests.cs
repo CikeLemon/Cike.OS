@@ -251,24 +251,21 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             await dbContext.SaveChangesAsync();
             modelId = model.Id;
 
-            // 接入点与映射是聚合内子实体：只能经聚合根加入，与聚合根一起落库
+            // 接入点与映射是聚合内子实体：只能经聚合根的意图方法加入，与聚合根一起落库
             var provider = ModelProvider.Create("Smoke provider");
-            provider.SyncEndpoints([
-                new ModelProvider.EndpointInput(
-                    0,
-                    ModelProviderProtocol.OpenAIChatCompletion,
-                    "官方",
-                    "https://api.openai.com/v1",
-                    "sk-test",
-                    new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
-                    [(modelId, 10, "gpt-4o-2024-11-20")]),
-            ]);
+            var first = provider.AddEndpoint(
+                ModelProviderProtocol.OpenAIChatCompletion,
+                "官方",
+                "https://api.openai.com/v1",
+                "sk-test",
+                new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
+                [new ModelProviderEndpoint.MappingInput(modelId, 10, "gpt-4o-2024-11-20")]);
             dbContext.Add(provider);
             await dbContext.SaveChangesAsync();
 
             providerId = provider.Id;
-            removedEndpointId = provider.Endpoints[0].Id;
-            removedMappingId = provider.Endpoints[0].Mappings[0].Id;
+            removedEndpointId = first.Id;
+            removedMappingId = first.Mappings[0].Id;
         }
 
         using (var scope = _host.CreateScope())
@@ -295,67 +292,32 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             var setting = Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(removedEndpoint.Setting);
             Assert.Equal("org-1", setting.Organization);
 
-            // 既有聚合根同步子实体：已有的保留、Id 为 0 的新增，同样自动拿到 Id
-            provider.SyncEndpoints(
-            [
-                new ModelProvider.EndpointInput(
-                    removedEndpointId,
-                    ModelProviderProtocol.OpenAIChatCompletion,
-                    "官方",
-                    "https://api.openai.com/v1",
-                    "sk-test",
-                    new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
-                    [(modelId, 10, "gpt-4o-2024-11-20")]),
-                new ModelProvider.EndpointInput(
-                    0,
-                    ModelProviderProtocol.Anthropic,
-                    "官方 Anthropic",
-                    "https://api.anthropic.com",
-                    "ak-test",
-                    new AnthropicModelProviderEndpointSetting(),
-                    [(modelId, 5, null)]),
-            ]);
+            // 既有聚合根再添加一个接入点：新子实体同样自动拿到 Id、写入租户
+            var added = provider.AddEndpoint(
+                ModelProviderProtocol.Anthropic,
+                "官方 Anthropic",
+                "https://api.anthropic.com",
+                "ak-test",
+                new AnthropicModelProviderEndpointSetting(),
+                [new ModelProviderEndpoint.MappingInput(modelId, 5, null)]);
             await dbContext.SaveChangesAsync();
-            var keptEndpoint = provider.Endpoints.Single(x => x.Id != removedEndpointId);
-            keptEndpointId = keptEndpoint.Id;
-            keptMappingId = keptEndpoint.Mappings[0].Id;
+            keptEndpointId = added.Id;
+            keptMappingId = added.Mappings[0].Id;
             Assert.True(keptEndpointId > 0);
             Assert.True(keptMappingId > 0);
 
-            // 映射随接入点整体同步：未提交的被移除；从集合移除的子实体在保存时转软删
-            provider.SyncEndpoints(
-            [
-                new ModelProvider.EndpointInput(
-                    removedEndpointId,
-                    ModelProviderProtocol.OpenAIChatCompletion,
-                    "官方",
-                    "https://vip.api.openai.com/v1",
-                    "sk-new",
-                    new OpenAIChatCompletionModelProviderEndpointSetting(),
-                    []),
-                new ModelProvider.EndpointInput(
-                    keptEndpointId,
-                    ModelProviderProtocol.Anthropic,
-                    "官方 Anthropic",
-                    "https://api.anthropic.com",
-                    "ak-test",
-                    new AnthropicModelProviderEndpointSetting(),
-                    [(modelId, 5, null)]),
-            ]);
+            // 修改接入点并同步映射：未提交的映射被移除，保存时转软删
+            provider.UpdateEndpoint(
+                removedEndpointId,
+                "官方",
+                "https://vip.api.openai.com/v1",
+                "sk-new",
+                new OpenAIChatCompletionModelProviderEndpointSetting(),
+                []);
             await dbContext.SaveChangesAsync();
 
-            // 未提交的接入点被移除：接入点与其映射一并软删
-            provider.SyncEndpoints(
-            [
-                new ModelProvider.EndpointInput(
-                    keptEndpointId,
-                    ModelProviderProtocol.Anthropic,
-                    "官方 Anthropic",
-                    "https://api.anthropic.com",
-                    "ak-test",
-                    new AnthropicModelProviderEndpointSetting(),
-                    [(modelId, 5, null)]),
-            ]);
+            // 移除接入点：接入点与其映射一并软删
+            provider.RemoveEndpoint(removedEndpointId);
             await dbContext.SaveChangesAsync();
         }
 

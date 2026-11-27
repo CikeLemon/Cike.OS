@@ -3,17 +3,12 @@ using Cike.OS.Domain.Shared.ValueObjects;
 
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
-/// <summary>
-/// 提供商映射之外，接入点本身的输入：随提供方整体提交，以 Id 为键（已有的更新、Id 为空的新增、未提交的移除）。
-/// 协议只在新建时生效，已有的接入点提交时必须带上现有协议。
-/// </summary>
-public class SaveModelProviderEndpointDto
+/// <summary>接入点的新建输入：协议、连接信息、协议专属设置，以及它的全部模型映射。</summary>
+public class CreateModelProviderEndpointDto
 {
-    /// <summary>为空（0）表示新建。</summary>
-    public long Id { get; set; }
-
     public string Name { get; set; } = null!;
 
+    /// <summary>协议：创建后不可变，要换协议只能删掉接入点重建。</summary>
     public ModelProviderProtocol Protocol { get; set; }
 
     public string BaseUrl { get; set; } = null!;

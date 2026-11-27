@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { endpointToSaveDto, emptyProviderForm, providerFormFromDto, providerFormToBody, providerUpdateBody, validateProviderForm, type ProviderFormState } from '@/components/model-providers/provider-form'
+import { emptyProviderForm, providerFormFromDto, providerFormToBody, providerUpdateBody, validateProviderForm, type ProviderFormState } from '@/components/model-providers/provider-form'
 import { getErrorMessage } from '@/lib/errors'
 
 const props = defineProps<{
@@ -44,11 +44,11 @@ async function submit() {
 
   saving.value = true
   try {
-    // 改名走提供方的更新接口：接入点与映射随提供方整体提交，没改的也要原样带上，否则会被删掉
+    // 改名只提交名称：提供方只管自己，接入点有它们自己的接口
     const result = props.provider
       ? await putApiV1ModelProvidersById({
           path: { id: props.provider.id ?? '' },
-          body: providerUpdateBody(form.name.trim(), (props.provider.endpoints ?? []).map(endpointToSaveDto)),
+          body: providerUpdateBody(form.name),
         })
       : await postApiV1ModelProviders({ body: providerFormToBody(form) })
 

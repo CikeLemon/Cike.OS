@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Agents.AI" Version="1.28.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(MicrosoftPackageVersion)" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(MicrosoftPackageVersion)" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftPackageVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="$(MicrosoftPackageVersion)" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
@@ -20,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cike.OS.Application\Cike.OS.Application.csproj" />
     <ProjectReference Include="..\..\src\Cike.OS.EntityFrameworkCore\Cike.OS.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\Cike.OS.Service.Open\Cike.OS.Service.Open.csproj" />
   </ItemGroup>
 
 </Project>

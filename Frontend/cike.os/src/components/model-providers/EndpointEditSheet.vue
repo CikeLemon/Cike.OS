@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ModelDto, ModelProviderDto, ModelProviderEndpointDto } from '@/api'
-import { getApiV1ModelsPagedList, putApiV1ModelProvidersById } from '@/api'
+import type { ModelDto, ModelProviderEndpointDto } from '@/api'
+import { getApiV1ModelsPagedList, postApiV1ModelProvidersByIdEndpoints, putApiV1ModelProvidersByIdEndpointsByEndpointId } from '@/api'
 import { LoaderCircle, Plus, Trash } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
@@ -22,20 +22,20 @@ import {
   emptyEndpointForm,
   emptyMappingRow,
   endpointFormFromDto,
-  endpointFormToSaveDto,
+  endpointFormToCreateDto,
+  endpointFormToUpdateDto,
   protocolFieldsHaveInput,
   resetProtocolFields,
   validateEndpointForm,
   type EndpointFormState,
 } from '@/components/model-providers/endpoint-form'
-import { providerUpdateBody, upsertEndpoint } from '@/components/model-providers/provider-form'
 import { getErrorMessage } from '@/lib/errors'
 import { PROTOCOL_LABELS, PROTOCOL_OPTIONS, isOpenAiProtocol, type ProtocolValue } from '@/lib/model-provider-protocol'
 
 const props = defineProps<{
   open: boolean
-  /** 所属模型提供方（含名下全部接入点）：接入点随提供方整体提交 */
-  provider: ModelProviderDto | null
+  /** 所属模型提供方的 Id：接入点是它下的子资源，新建 / 更新走接入点自己的接口 */
+  providerId: string
   /** 传入为编辑，null 为新建；编辑态协议只读（创建后不可变） */
   endpoint?: ModelProviderEndpointDto | null
 }>()
@@ -104,17 +104,21 @@ function applyProtocol(protocol: ProtocolValue) {
 
 async function submit() {
   errors.value = validateEndpointForm(form)
-  if (!props.provider || Object.keys(errors.value).length > 0) return
+  if (Object.keys(errors.value).length > 0) return
 
   saving.value = true
   try {
-    const provider = props.provider
-    // 接入点随提供方整体提交：没改的接入点原样带上，只替换 / 追加这一条；新建的协议随表单提交，已有的协议不可变
-    const endpoint = endpointFormToSaveDto(form, props.endpoint?.id)
-    const result = await putApiV1ModelProvidersById({
-      path: { id: provider.id ?? '' },
-      body: providerUpdateBody(provider.name, upsertEndpoint(provider.endpoints, endpoint)),
-    })
+    // 只提交这一个接入点：新建调接入点的新建接口（带协议），编辑调更新接口（路由上的 endpointId 指认接入点，不带协议）
+    const endpointId = props.endpoint?.id
+    const result = isEdit.value && endpointId
+      ? await putApiV1ModelProvidersByIdEndpointsByEndpointId({
+          path: { id: props.providerId, endpointId },
+          body: endpointFormToUpdateDto(form),
+        })
+      : await postApiV1ModelProvidersByIdEndpoints({
+          path: { id: props.providerId },
+          body: endpointFormToCreateDto(form),
+        })
 
     if (result.error) {
       toast.error(getErrorMessage(result))

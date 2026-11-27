@@ -20,6 +20,15 @@ export type CreateModelProviderDto = {
     name?: string | null;
 };
 
+export type CreateModelProviderEndpointDto = {
+    name?: string | null;
+    protocol?: ModelProviderProtocol;
+    baseUrl?: string | null;
+    apiKey?: string | null;
+    setting?: OpenAiChatCompletionModelProviderEndpointSetting | OpenAiResponseModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
+    mappings?: Array<SaveModelProviderMappingDto> | null;
+};
+
 export type CreateTagDto = {
     key?: string | null;
     name?: string | null;
@@ -92,7 +101,6 @@ export type ModelProviderDto = {
     updatedAt?: string;
     updatedBy?: string;
     name?: string | null;
-    endpoints?: Array<ModelProviderEndpointDto> | null;
 };
 
 export type ModelProviderEndpointDto = {
@@ -150,16 +158,6 @@ export type OpenAiChatCompletionModelProviderEndpointSetting = Omit<ModelProvide
 export type OpenAiResponseModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
     organization?: string | null;
     type: 3;
-};
-
-export type SaveModelProviderEndpointDto = {
-    id?: string;
-    name?: string | null;
-    protocol?: ModelProviderProtocol;
-    baseUrl?: string | null;
-    apiKey?: string | null;
-    setting?: OpenAiChatCompletionModelProviderEndpointSetting | OpenAiResponseModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
-    mappings?: Array<SaveModelProviderMappingDto> | null;
 };
 
 export type SaveModelProviderMappingDto = {
@@ -291,7 +289,14 @@ export type UpdateModelDto = {
 
 export type UpdateModelProviderDto = {
     name?: string | null;
-    endpoints?: Array<SaveModelProviderEndpointDto> | null;
+};
+
+export type UpdateModelProviderEndpointDto = {
+    name?: string | null;
+    baseUrl?: string | null;
+    apiKey?: string | null;
+    setting?: OpenAiChatCompletionModelProviderEndpointSetting | OpenAiResponseModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
+    mappings?: Array<SaveModelProviderMappingDto> | null;
 };
 
 export type UpdateTagDto = {
@@ -441,6 +446,83 @@ export type PostApiV1ModelProvidersResponses = {
 };
 
 export type PostApiV1ModelProvidersResponse = PostApiV1ModelProvidersResponses[keyof PostApiV1ModelProvidersResponses];
+
+export type GetApiV1ModelProvidersByIdEndpointsData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}/Endpoints';
+};
+
+export type GetApiV1ModelProvidersByIdEndpointsErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1ModelProvidersByIdEndpointsResponses = {
+    /**
+     * OK
+     */
+    200: Array<ModelProviderEndpointDto>;
+};
+
+export type GetApiV1ModelProvidersByIdEndpointsResponse = GetApiV1ModelProvidersByIdEndpointsResponses[keyof GetApiV1ModelProvidersByIdEndpointsResponses];
+
+export type PostApiV1ModelProvidersByIdEndpointsData = {
+    body: CreateModelProviderEndpointDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}/Endpoints';
+};
+
+export type PostApiV1ModelProvidersByIdEndpointsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1ModelProvidersByIdEndpointsResponse = PostApiV1ModelProvidersByIdEndpointsResponses[keyof PostApiV1ModelProvidersByIdEndpointsResponses];
+
+export type DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdData = {
+    body?: never;
+    path: {
+        id: string;
+        endpointId: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}';
+};
+
+export type DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PutApiV1ModelProvidersByIdEndpointsByEndpointIdData = {
+    body: UpdateModelProviderEndpointDto;
+    path: {
+        id: string;
+        endpointId: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}';
+};
+
+export type PutApiV1ModelProvidersByIdEndpointsByEndpointIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type GetApiV1ModelsPagedListData = {
     body?: never;

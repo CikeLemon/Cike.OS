@@ -9,8 +9,8 @@ using Mapster;
 namespace Cike.OS.Application.ModelProviders;
 
 /// <summary>
-/// 模型提供方查询：接入点与映射随提供方一起带出，没有独立的查询接口。
-/// 详情要整棵聚合，走自定义仓储（连同两层子集合加载）；列表不加载聚合，只做投影。
+/// 模型提供方查询：只管提供方自己的名称，接入点经它自己的列表查询读取。
+/// 列表不加载聚合，只做投影；详情只读聚合根本身。
 /// </summary>
 public class ModelProviderQueryHandler(
     IModelProviderRepository providerRepository,
@@ -84,43 +84,12 @@ public class ModelProviderQueryHandler(
         }).ToList();
     }
 
-    /// <summary>
-    /// 详情：实体 → DTO 交给 Mapster（多态设置两边声明类型相同，直接引用带出）；手写的只有排序和映射里的模型显示名称回填。
-    /// </summary>
+    /// <summary>详情：实体 → DTO 交给 Mapster（基类继承的 Id / 审计字段按名字自动带上）。</summary>
     [LocalEventHandler]
     public async Task GetAsync(GetModelProviderQuery query, CancellationToken cancellationToken = default)
     {
-        var provider = await providerRepository.FindWithEndpointsAsync(query.Id, asNoTracking: true, cancellationToken);
-        if (provider == null)
-        {
-            query.Result = null;
-            return;
-        }
-
-        var dto = provider.Adapt<ModelProviderDto>();
-
-        // 接入点按名称排序、接入点下的映射按分数降序（与路由取用顺序一致）
-        dto.Endpoints = [.. dto.Endpoints.OrderBy(x => x.Name)];
-        foreach (var endpoint in dto.Endpoints)
-        {
-            endpoint.Mappings = [.. endpoint.Mappings.OrderByDescending(x => x.Priority)];
-        }
-
-        // 模型显示名称一次性批量取回填，不逐行查库
-        var modelIds = dto.Endpoints.SelectMany(x => x.Mappings).Select(x => x.ModelId).Distinct().ToList();
-        using var _ = modelRepository.BeginAsNoTracking();
-        var models = await modelRepository.ToListAsync(
-            modelRepository.GetQueryable().Where(x => modelIds.Contains(x.Id)).Select(x => new { x.Id, x.DisplayName }),
-            cancellationToken);
-        var displayNames = models.ToDictionary(x => x.Id, x => x.DisplayName);
-        foreach (var endpoint in dto.Endpoints)
-        {
-            foreach (var mapping in endpoint.Mappings)
-            {
-                mapping.ModelDisplayName = displayNames.GetValueOrDefault(mapping.ModelId, string.Empty);
-            }
-        }
-
-        query.Result = dto;
+        using var _ = providerRepository.BeginAsNoTracking();
+        var provider = await providerRepository.FindAsync(query.Id, cancellationToken);
+        query.Result = provider?.Adapt<ModelProviderDto>();
     }
 }

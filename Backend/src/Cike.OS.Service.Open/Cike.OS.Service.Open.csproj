@@ -8,6 +8,11 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- 测试宿主工厂需要引用入口程序（顶级语句生成的 internal Program） -->
+    <InternalsVisibleTo Include="Cike.OS.Tests" />
+  </ItemGroup>
 
 
   <ItemGroup>

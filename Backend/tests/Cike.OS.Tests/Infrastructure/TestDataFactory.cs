@@ -5,6 +5,7 @@ using Cike.OS.Application.Contracts.ToolPackageCategories.Dtos;
 using Cike.OS.Application.Contracts.ToolPackages.Dtos;
 using Cike.OS.Application.Contracts.Tools.Dtos;
 using Cike.OS.Application.ModelProviders.Commands;
+using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Application.Models.Commands;
 using Cike.OS.Application.Tags.Commands;
 using Cike.OS.Application.ToolPackageCategories.Commands;
@@ -74,17 +75,15 @@ public static class TestDataFactory
         _ => new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
     };
 
-    /// <summary>接入点的输入：Id 为 0 表示新建。</summary>
-    public static SaveModelProviderEndpointDto Endpoint(
+    /// <summary>接入点的新建输入。</summary>
+    public static CreateModelProviderEndpointDto Endpoint(
         string name = "官方",
         ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
-        long id = 0,
         IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
         string baseUrl = "https://api.openai.com/v1",
         string apiKey = "sk-test",
         ModelProviderEndpointSetting? setting = null) => new()
     {
-        Id = id,
         Name = name,
         Protocol = protocol,
         BaseUrl = baseUrl,
@@ -93,19 +92,52 @@ public static class TestDataFactory
         Mappings = mappings?.ToList() ?? [],
     };
 
-    /// <summary>用「名称 + 全部接入点」保存提供方（与界面同一个接口：提交的是期望的完整状态）。</summary>
-    public static Task SaveModelProviderAsync(CikeOSTestHost host, long providerId, string name, IReadOnlyList<SaveModelProviderEndpointDto> endpoints) =>
-        host.PublishAsync(new UpdateModelProviderCommand(providerId, new UpdateModelProviderDto
-        {
-            Name = name,
-            Endpoints = endpoints.ToList(),
-        }));
+    /// <summary>接入点的更新输入：没有协议（创建后不可变），设置的子类型要对着现有协议给。</summary>
+    public static UpdateModelProviderEndpointDto EndpointUpdate(
+        string name = "官方",
+        ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
+        IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
+        string baseUrl = "https://api.openai.com/v1",
+        string apiKey = "sk-test",
+        ModelProviderEndpointSetting? setting = null) => new()
+    {
+        Name = name,
+        BaseUrl = baseUrl,
+        ApiKey = apiKey,
+        Setting = setting ?? CreateEndpointSetting(protocol),
+        Mappings = mappings?.ToList() ?? [],
+    };
+
+    /// <summary>给提供方添加一个接入点（含它的全部映射），返回新接入点的 Id。</summary>
+    public static async Task<long> AddEndpointAsync(CikeOSTestHost host, long providerId, CreateModelProviderEndpointDto endpoint)
+    {
+        var command = new CreateModelProviderEndpointCommand(providerId, endpoint);
+        await host.PublishAsync(command);
+        return command.Id;
+    }
+
+    public static Task UpdateEndpointAsync(CikeOSTestHost host, long providerId, long endpointId, UpdateModelProviderEndpointDto endpoint) =>
+        host.PublishAsync(new UpdateModelProviderEndpointCommand(providerId, endpointId, endpoint));
+
+    public static Task DeleteEndpointAsync(CikeOSTestHost host, long providerId, long endpointId) =>
+        host.PublishAsync(new DeleteModelProviderEndpointCommand(providerId, endpointId));
+
+    /// <summary>读回一个提供方名下的全部接入点。</summary>
+    public static async Task<List<ModelProviderEndpointDto>> GetEndpointsAsync(CikeOSTestHost host, long providerId)
+    {
+        var query = new GetModelProviderEndpointListQuery(providerId);
+        await host.PublishAsync(query);
+        return query.Result!;
+    }
+
+    public static Task RenameModelProviderAsync(CikeOSTestHost host, long providerId, string name) =>
+        host.PublishAsync(new UpdateModelProviderCommand(providerId, new UpdateModelProviderDto { Name = name }));
 
     /// <summary>建一个「提供方 → 一个接入点 → 映射」的聚合，给只关心「模型是否被映射引用」的用例用。</summary>
     public static async Task CreateProviderWithMappingsAsync(CikeOSTestHost host, string name, IReadOnlyList<SaveModelProviderMappingDto> mappings)
     {
         var providerId = await CreateModelProviderAsync(host, name);
-        await SaveModelProviderAsync(host, providerId, name, [Endpoint(mappings: mappings)]);
+        await AddEndpointAsync(host, providerId, Endpoint(mappings: mappings));
     }
 
     public static async Task<long> CreateModelAsync(CikeOSTestHost host, string name, string displayName, string? description = null, List<long>? tagIds = null)

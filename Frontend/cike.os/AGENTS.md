@@ -21,7 +21,7 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方 / 接入点表单校验、接入点随提供方整体提交的拼装、过滤 / 格式化）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方 / 接入点表单校验与新建 / 更新请求体、过滤 / 格式化）
 pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
 # 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
@@ -97,7 +97,7 @@ if (error) toast.error(getErrorMessage(error))
 - **组件命名模式**：表单类独立成 `*Form.vue`，对话框类独立成 `*Dialog.vue` / `*Modal.vue`（确认框用 shadcn-vue 的 `AlertDialog`），不内联在页面或其它组件里。
 - **列表页的排序与时间列**：
   - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排（如接入点里选模型传 `DisplayName asc`）。
-  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们随父级整体保存，时间戳没有独立意义。
+  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们是聚合内子实体，不是独立的实体列表页（接入点虽有独立的增删改查接口，仍归在提供方详情页里维护）。
 - **图标只用 `@lucide/vue`**：本项目依赖的是 `@lucide/vue`，禁止引入 `lucide-vue-next` 或其它图标库（两者包名 / API 不同，混用会重复打包）。
 
 ## 配色约束（zinc 中性色板）

@@ -5,10 +5,13 @@ using FluentValidation;
 
 namespace Cike.OS.Application.ModelProviders.Validators;
 
-/// <summary>接入点的输入项：随提供方整体提交，以 Id 为键。重名、协议不可变、映射的模型是否存在，由 Handler 与聚合裁决。</summary>
-public class SaveModelProviderEndpointDtoValidator : AbstractValidator<SaveModelProviderEndpointDto>
+/// <summary>
+/// 接入点新建输入的校验。接入点重名、接入点 Id 是否在提供方名下、映射的模型是否存在，由 Handler 与聚合裁决；
+/// 设置子类型是否与该接入点现有协议一致（更新时没有协议可比），由聚合裁决。
+/// </summary>
+public class CreateModelProviderEndpointDtoValidator : AbstractValidator<CreateModelProviderEndpointDto>
 {
-    public SaveModelProviderEndpointDtoValidator()
+    public CreateModelProviderEndpointDtoValidator()
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("接入点名称不能为空。")

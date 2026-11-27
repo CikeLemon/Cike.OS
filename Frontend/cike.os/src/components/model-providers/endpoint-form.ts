@@ -1,4 +1,4 @@
-import type { ModelProviderEndpointDto, SaveModelProviderEndpointDto, SaveModelProviderMappingDto } from '@/api'
+import type { CreateModelProviderEndpointDto, ModelProviderEndpointDto, SaveModelProviderMappingDto, UpdateModelProviderEndpointDto } from '@/api'
 import { MODEL_PROVIDER_PROTOCOL, type AnyEndpointSetting, type ProtocolValue } from '@/lib/model-provider-protocol'
 
 /** 表单里的一行模型映射：modelId 既是提交键也是聚合内的唯一键（一个接入点对一个模型只映射一次） */
@@ -119,14 +119,23 @@ function resetProtocolFields(state: EndpointFormState): void {
 }
 
 /**
- * 接入点表单 → 随提供方整体提交的输入项。已有接入点带上 Id（后端按 Id 更新，协议不可变），新建不带 Id。
- * 协议每次都带：新建时生效，已有接入点必须与现有协议一致。
+ * 接入点表单 → 新建请求体：协议随表单提交（创建后不可变）。
  */
-function endpointFormToSaveDto(state: EndpointFormState, id?: string): SaveModelProviderEndpointDto {
+function endpointFormToCreateDto(state: EndpointFormState): CreateModelProviderEndpointDto {
   return {
-    ...(id ? { id } : {}),
     name: state.name.trim(),
     protocol: state.protocol,
+    baseUrl: state.baseUrl.trim(),
+    apiKey: state.apiKey.trim(),
+    setting: protocolSetting(state),
+    mappings: mappingRowsToDtos(state.mappings),
+  }
+}
+
+/** 接入点表单 → 更新请求体：不含协议（创建后不可变），只改名称、连接与映射。 */
+function endpointFormToUpdateDto(state: EndpointFormState): UpdateModelProviderEndpointDto {
+  return {
+    name: state.name.trim(),
     baseUrl: state.baseUrl.trim(),
     apiKey: state.apiKey.trim(),
     setting: protocolSetting(state),
@@ -138,7 +147,8 @@ export {
   emptyEndpointForm,
   emptyMappingRow,
   endpointFormFromDto,
-  endpointFormToSaveDto,
+  endpointFormToCreateDto,
+  endpointFormToUpdateDto,
   mappingRowsToDtos,
   protocolFieldsHaveInput,
   protocolSetting,

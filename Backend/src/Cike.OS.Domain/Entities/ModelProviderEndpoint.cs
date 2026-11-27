@@ -26,6 +26,9 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
 
     public List<ModelProviderMapping> Mappings { get; private set; } = [];
 
+    /// <summary>提交给 <see cref="SyncMappings"/> 的一条映射。</summary>
+    public readonly record struct MappingInput(long ModelId, int Priority, string? ProviderModelName);
+
     private ModelProviderEndpoint()
     {
     }
@@ -64,9 +67,9 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
     /// 按提交的映射整体同步（以模型为键）：已映射的模型更新分数与提供商侧模型名，新出现的模型新增，未提交的移除。
     /// 一个接入点对一个模型只保留一条映射是聚合内部不变量，输入里重复的模型在这里被拒。
     /// </summary>
-    internal void SyncMappings(IEnumerable<(long ModelId, int Priority, string? ProviderModelName)> mappings)
+    internal void SyncMappings(IEnumerable<MappingInput> mappings)
     {
-        var submitted = new List<(long ModelId, int Priority, string? ProviderModelName)>();
+        var submitted = new List<MappingInput>();
         foreach (var mapping in mappings)
         {
             if (submitted.Any(x => x.ModelId == mapping.ModelId))

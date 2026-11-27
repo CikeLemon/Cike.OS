@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Cike.OS.Tests;
 
-/// <summary>模型提供方的输入校验：名称；更新时还带全部接入点。</summary>
+/// <summary>模型提供方的输入校验：只有名称（接入点不随提供方提交）。</summary>
 public class ModelProviderDtoValidatorTests
 {
     [Fact]
@@ -38,35 +38,14 @@ public class ModelProviderDtoValidatorTests
         new CreateModelProviderDtoValidator().TestValidate(new CreateModelProviderDto { Name = name })
             .ShouldHaveValidationErrorFor(x => x.Name);
     }
-
-    [Fact]
-    public void Validate_NullEndpoints_HasError()
-    {
-        var dto = new UpdateModelProviderDto { Name = "智谱", Endpoints = null! };
-
-        // RuleForEach 对 null 集合不报错，必须靠 NotNull 拦下，否则 Handler 会 NRE
-        new UpdateModelProviderDtoValidator().TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Endpoints);
-    }
-
-    [Fact]
-    public void Validate_EndpointErrors_AreReportedUnderTheirIndex()
-    {
-        var dto = new UpdateModelProviderDto
-        {
-            Name = "智谱",
-            Endpoints = [new SaveModelProviderEndpointDto { Name = "", Protocol = ModelProviderProtocol.OpenAIChatCompletion, BaseUrl = "https://x", ApiKey = "k", Setting = new OpenAIChatCompletionModelProviderEndpointSetting() }],
-        };
-
-        new UpdateModelProviderDtoValidator().TestValidate(dto).ShouldHaveValidationErrorFor("Endpoints[0].Name");
-    }
 }
 
-/// <summary>接入点输入的校验：连接字段必填，协议专属字段可选，设置的子类必须与协议对应。</summary>
-public class SaveModelProviderEndpointDtoValidatorTests
+/// <summary>接入点新建输入的校验：连接字段必填，协议专属字段可选，设置的子类必须与协议对应。</summary>
+public class CreateModelProviderEndpointDtoValidatorTests
 {
-    private readonly SaveModelProviderEndpointDtoValidator _validator = new();
+    private readonly CreateModelProviderEndpointDtoValidator _validator = new();
 
-    private static SaveModelProviderEndpointDto Valid() => new()
+    private static CreateModelProviderEndpointDto Valid() => new()
     {
         Name = "官方",
         Protocol = ModelProviderProtocol.OpenAIChatCompletion,
@@ -203,5 +182,72 @@ public class SaveModelProviderEndpointDtoValidatorTests
         dto.Mappings = [new SaveModelProviderMappingDto { ModelId = 1, ProviderModelName = new string('x', 129) }];
 
         _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Mappings[0].ProviderModelName");
+    }
+}
+
+/// <summary>接入点更新输入的校验：连接字段与映射项同新建，没有协议；设置非空，子类型是否与现有协议一致由聚合裁决。</summary>
+public class UpdateModelProviderEndpointDtoValidatorTests
+{
+    private readonly UpdateModelProviderEndpointDtoValidator _validator = new();
+
+    private static UpdateModelProviderEndpointDto Valid() => new()
+    {
+        Name = "官方",
+        BaseUrl = "https://api.openai.com/v1",
+        ApiKey = "sk-test",
+        Setting = new OpenAIChatCompletionModelProviderEndpointSetting(),
+    };
+
+    [Fact]
+    public void Validate_ValidEndpoint_HasNoErrors()
+    {
+        _validator.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_EmptyName_HasError()
+    {
+        var dto = Valid();
+        dto.Name = "";
+
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Name);
+    }
+
+    [Fact]
+    public void Validate_MissingBaseUrlAndApiKey_HasErrors()
+    {
+        var dto = Valid();
+        dto.BaseUrl = " ";
+        dto.ApiKey = "";
+
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.BaseUrl);
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.ApiKey);
+    }
+
+    [Fact]
+    public void Validate_NullSetting_HasError()
+    {
+        var dto = Valid();
+        dto.Setting = null!;
+
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Setting);
+    }
+
+    [Fact]
+    public void Validate_NullMappings_HasError()
+    {
+        var dto = Valid();
+        dto.Mappings = null!;
+
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Mappings);
+    }
+
+    [Fact]
+    public void Validate_MappingWithoutModel_HasError()
+    {
+        var dto = Valid();
+        dto.Mappings = [new SaveModelProviderMappingDto { ModelId = 0, Priority = 10 }];
+
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor("Mappings[0].ModelId");
     }
 }

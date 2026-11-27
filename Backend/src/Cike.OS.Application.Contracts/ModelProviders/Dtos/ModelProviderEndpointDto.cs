@@ -4,7 +4,7 @@ using Cike.OS.Domain.Shared.ValueObjects;
 
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
-/// <summary>接入点的输出：随 <see cref="ModelProviderDto"/> 一起带出，没有独立的查询接口。</summary>
+/// <summary>接入点的输出：由接入点自己的列表接口带出（<c>GET /ModelProviders/{id}/Endpoints</c>），每个接入点内嵌它的全部映射。</summary>
 public class ModelProviderEndpointDto : AuditedEntityDto<long>
 {
     public string Name { get; set; } = null!;
