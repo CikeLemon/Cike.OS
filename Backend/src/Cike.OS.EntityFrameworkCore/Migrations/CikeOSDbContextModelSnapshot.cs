@@ -686,6 +686,13 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("CreatedAt")
@@ -1161,7 +1168,7 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
             modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderEndpoint", b =>
                 {
                     b.HasOne("Cike.OS.Domain.Entities.ModelProvider", null)
-                        .WithMany("Endpoints")
+                        .WithMany()
                         .HasForeignKey("ModelProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1179,11 +1186,6 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
             modelBuilder.Entity("Cike.OS.Domain.Entities.AgentToolPackage", b =>
                 {
                     b.Navigation("AgentTools");
-                });
-
-            modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProvider", b =>
-                {
-                    b.Navigation("Endpoints");
                 });
 
             modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProviderEndpoint", b =>

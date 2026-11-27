@@ -1,6 +1,6 @@
 using Cike.Contracts.EntityDtos;
 
-namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
+namespace Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 
 /// <summary>提供商映射的输出：随 <see cref="ModelProviderEndpointDto"/> 一起带出，没有独立接口。</summary>
 public class ModelProviderMappingDto : AuditedEntityDto<long>

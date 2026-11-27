@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ModelProviderDto, ModelProviderEndpointDto } from '@/api'
 import {
-  deleteApiV1ModelProvidersByIdEndpointsByEndpointId,
+  deleteApiV1ModelProviderEndpointsById,
+  getApiV1ModelProviderEndpointsList,
   getApiV1ModelProvidersById,
-  getApiV1ModelProvidersByIdEndpoints,
 } from '@/api'
 import { ArrowLeft, Pencil, Plus, Trash } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
@@ -26,7 +26,7 @@ const router = useRouter()
 
 const providerId = computed(() => String(route.params.id ?? ''))
 
-// 提供方只管自己的名称；接入点经它自己的列表接口读取
+// 提供方只管自己的名称；接入点是独立的聚合，列表按提供方 Id 过滤
 const provider = ref<ModelProviderDto | null>(null)
 const endpoints = ref<ModelProviderEndpointDto[]>([])
 const loading = ref(true)
@@ -56,12 +56,8 @@ async function loadProvider() {
 }
 
 async function loadEndpoints() {
-  const result = await getApiV1ModelProvidersByIdEndpoints({ path: { id: providerId.value } })
+  const result = await getApiV1ModelProviderEndpointsList({ query: { modelProviderId: providerId.value } })
   if (result.error) {
-    if (result.response?.status === 404) {
-      notFound.value = true
-      return
-    }
     toast.error(getErrorMessage(result))
     return
   }
@@ -85,9 +81,7 @@ async function confirmDeleteEndpoint() {
   deleteEndpointBusy.value = true
   try {
     // 删接入点走它自己的接口：它的映射一并删除，其余接入点不受影响
-    const result = await deleteApiV1ModelProvidersByIdEndpointsByEndpointId({
-      path: { id: providerId.value, endpointId: target.id },
-    })
+    const result = await deleteApiV1ModelProviderEndpointsById({ path: { id: target.id } })
     if (result.error) {
       toast.error(getErrorMessage(result))
       return

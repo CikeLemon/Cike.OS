@@ -62,6 +62,13 @@ public class ModelProviderEndpointEntityConfiguration : IEntityTypeConfiguration
                 json => JsonColumn.Required<ModelProviderEndpointSetting>(json))
             .HasColumnType("json");
 
+        // 接入点与模型提供方是两个聚合，按 Id 引用：关系配在接入点一侧，提供方上没有导航集合
+        builder.HasOne<ModelProvider>()
+            .WithMany()
+            .HasForeignKey(x => x.ModelProviderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 提供商映射是接入点下的子实体，随聚合整体加载 / 软删
         builder.HasMany(x => x.Mappings)
             .WithOne()
             .HasForeignKey(x => x.ModelProviderEndpointId)
@@ -80,11 +87,6 @@ public class ModelProviderEntityConfiguration : IEntityTypeConfiguration<ModelPr
 
         builder.Property(x => x.Name)
             .HasMaxLength(128);
-
-        builder.HasMany(x => x.Endpoints)
-            .WithOne()
-            .HasForeignKey(x => x.ModelProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.TenantId);
     }

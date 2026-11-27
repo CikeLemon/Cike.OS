@@ -97,7 +97,7 @@ if (error) toast.error(getErrorMessage(error))
 - **组件命名模式**：表单类独立成 `*Form.vue`，对话框类独立成 `*Dialog.vue` / `*Modal.vue`（确认框用 shadcn-vue 的 `AlertDialog`），不内联在页面或其它组件里。
 - **列表页的排序与时间列**：
   - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排（如接入点里选模型传 `DisplayName asc`）。
-  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们是聚合内子实体，不是独立的实体列表页（接入点虽有独立的增删改查接口，仍归在提供方详情页里维护）。
+  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们仍归在父级详情页里维护，不是独立的实体列表页（接入点虽是独立的聚合、有自己的增删改查接口）。
 - **图标只用 `@lucide/vue`**：本项目依赖的是 `@lucide/vue`，禁止引入 `lucide-vue-next` 或其它图标库（两者包名 / API 不同，混用会重复打包）。
 
 ## 配色约束（zinc 中性色板）
@@ -106,6 +106,8 @@ if (error) toast.error(getErrorMessage(error))
 - **一律用语义 token，禁止硬编码颜色**：组件里用 `bg-background` / `text-foreground` / `bg-primary` / `text-primary-foreground` / `bg-secondary` / `bg-muted` / `text-muted-foreground` / `bg-accent` / `border-border` / `bg-destructive` / `ring-ring` 等语义类；**禁止** `bg-[#1a1a1a]`、`text-zinc-500`、`bg-gray-100` 这类任意值或 Tailwind 原始调色板类——它们不跟随主题、暗色模式下会失真。图表用 `--chart-1..5`，侧栏用 `--sidebar-*` 令牌；只能用 `style.css` 已定义的语义 token，禁止臆造或引用未定义的 token。
 - **业务样式只管布局与组合**：业务组件的 class 只负责布局（间距 / 排列 / 尺寸），不改 `ui/` 组件的圆角 / 边框 / 阴影 / 配色等外观底座。
 - **并排多栏的表单行必须加 `items-start`**（如 `sm:grid-cols-2 sm:items-start`）：网格默认拉伸子项，一侧多出提示 / 报错文字时，另一侧的行会被均分撑高，标签和输入框整体下沉、与对侧错位。
+- **滚动表单用 grid 时必须加 `content-start`**：抽屉 / 对话框里 `grid flex-1 overflow-y-auto` 的表单，grid 的隐式行默认拉伸填满容器高度，各分组之间会被撑出大段空白（2026-11-27 接入点抽屉被点名「长得丑」）。
+- **`SheetFooter` 显式写成一行靠右**：生成物默认 `mt-auto flex flex-col gap-2 p-4`，按钮会堆成整行；业务层传 `class="mt-0 flex-row items-center justify-end gap-2 border-t px-6 py-4"` 覆盖。
 - **改色只改 `style.css`**：调色板/主题色统一在 `style.css` 的 `:root`（亮色）与 `.dark`（暗色）里改 CSS 变量，一处生效全局；不要在组件里散落颜色定义。
 - **暗色是一等公民**：新增任何自定义颜色变量，必须同时在 `:root` 和 `.dark` 给出对应值，避免只配亮色。
 

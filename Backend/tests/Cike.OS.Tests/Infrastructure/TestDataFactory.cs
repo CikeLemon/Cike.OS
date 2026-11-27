@@ -1,3 +1,6 @@
+using Cike.OS.Application.ModelProviderEndpoints.Queries;
+using Cike.OS.Application.ModelProviderEndpoints.Commands;
+using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.Contracts.Models.Dtos;
 using Cike.OS.Application.Contracts.Tags.Dtos;
@@ -75,8 +78,9 @@ public static class TestDataFactory
         _ => new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
     };
 
-    /// <summary>接入点的新建输入。</summary>
+    /// <summary>接入点的新建输入：第一个参数是所属提供方。</summary>
     public static CreateModelProviderEndpointDto Endpoint(
+        long modelProviderId = 0,
         string name = "官方",
         ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
         IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
@@ -84,6 +88,7 @@ public static class TestDataFactory
         string apiKey = "sk-test",
         ModelProviderEndpointSetting? setting = null) => new()
     {
+        ModelProviderId = modelProviderId,
         Name = name,
         Protocol = protocol,
         BaseUrl = baseUrl,
@@ -108,21 +113,21 @@ public static class TestDataFactory
         Mappings = mappings?.ToList() ?? [],
     };
 
-    /// <summary>给提供方添加一个接入点（含它的全部映射），返回新接入点的 Id。</summary>
-    public static async Task<long> AddEndpointAsync(CikeOSTestHost host, long providerId, CreateModelProviderEndpointDto endpoint)
+    /// <summary>新建一个接入点（含它的全部映射），返回新接入点的 Id。</summary>
+    public static async Task<long> AddEndpointAsync(CikeOSTestHost host, CreateModelProviderEndpointDto endpoint)
     {
-        var command = new CreateModelProviderEndpointCommand(providerId, endpoint);
+        var command = new CreateModelProviderEndpointCommand(endpoint);
         await host.PublishAsync(command);
         return command.Id;
     }
 
-    public static Task UpdateEndpointAsync(CikeOSTestHost host, long providerId, long endpointId, UpdateModelProviderEndpointDto endpoint) =>
-        host.PublishAsync(new UpdateModelProviderEndpointCommand(providerId, endpointId, endpoint));
+    public static Task UpdateEndpointAsync(CikeOSTestHost host, long endpointId, UpdateModelProviderEndpointDto endpoint) =>
+        host.PublishAsync(new UpdateModelProviderEndpointCommand(endpointId, endpoint));
 
-    public static Task DeleteEndpointAsync(CikeOSTestHost host, long providerId, long endpointId) =>
-        host.PublishAsync(new DeleteModelProviderEndpointCommand(providerId, endpointId));
+    public static Task DeleteEndpointAsync(CikeOSTestHost host, long endpointId) =>
+        host.PublishAsync(new DeleteModelProviderEndpointCommand(endpointId));
 
-    /// <summary>读回一个提供方名下的全部接入点。</summary>
+    /// <summary>读回一个提供方名下的全部接入点（按名称排序、映射按分数降序、带模型显示名）。</summary>
     public static async Task<List<ModelProviderEndpointDto>> GetEndpointsAsync(CikeOSTestHost host, long providerId)
     {
         var query = new GetModelProviderEndpointListQuery(providerId);
@@ -130,14 +135,22 @@ public static class TestDataFactory
         return query.Result!;
     }
 
+    /// <summary>读回一个接入点的详情；不存在时为 null。</summary>
+    public static async Task<ModelProviderEndpointDto?> GetEndpointAsync(CikeOSTestHost host, long endpointId)
+    {
+        var query = new GetModelProviderEndpointQuery(endpointId);
+        await host.PublishAsync(query);
+        return query.Result;
+    }
+
     public static Task RenameModelProviderAsync(CikeOSTestHost host, long providerId, string name) =>
         host.PublishAsync(new UpdateModelProviderCommand(providerId, new UpdateModelProviderDto { Name = name }));
 
-    /// <summary>建一个「提供方 → 一个接入点 → 映射」的聚合，给只关心「模型是否被映射引用」的用例用。</summary>
+    /// <summary>建一个「提供方 + 一个接入点 + 映射」，给只关心「模型是否被映射引用」的用例用。</summary>
     public static async Task CreateProviderWithMappingsAsync(CikeOSTestHost host, string name, IReadOnlyList<SaveModelProviderMappingDto> mappings)
     {
         var providerId = await CreateModelProviderAsync(host, name);
-        await AddEndpointAsync(host, providerId, Endpoint(mappings: mappings));
+        await AddEndpointAsync(host, Endpoint(providerId, mappings: mappings));
     }
 
     public static async Task<long> CreateModelAsync(CikeOSTestHost host, string name, string displayName, string? description = null, List<long>? tagIds = null)

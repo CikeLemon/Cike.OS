@@ -1,7 +1,7 @@
-using Cike.OS.Application.Contracts.ModelProviders.Dtos;
+using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using FluentValidation;
 
-namespace Cike.OS.Application.ModelProviders.Validators;
+namespace Cike.OS.Application.ModelProviderEndpoints.Validators;
 
 /// <summary>
 /// 接入点更新输入的校验：与新建相同的连接字段规则，但没有协议；设置子类型是否与现有协议一致由聚合裁决。

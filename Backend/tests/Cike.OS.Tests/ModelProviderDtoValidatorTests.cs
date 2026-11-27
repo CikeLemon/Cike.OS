@@ -1,3 +1,5 @@
+using Cike.OS.Application.ModelProviderEndpoints.Validators;
+using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Validators;
 using Cike.OS.Domain.Shared.Enums;
@@ -47,6 +49,7 @@ public class CreateModelProviderEndpointDtoValidatorTests
 
     private static CreateModelProviderEndpointDto Valid() => new()
     {
+        ModelProviderId = 1,
         Name = "官方",
         Protocol = ModelProviderProtocol.OpenAIChatCompletion,
         BaseUrl = "https://api.openai.com/v1",
@@ -70,6 +73,15 @@ public class CreateModelProviderEndpointDtoValidatorTests
         _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.Name);
     }
 
+    [Fact]
+    public void Validate_MissingProvider_HasError()
+    {
+        var dto = Valid();
+        dto.ModelProviderId = 0;
+    
+        _validator.TestValidate(dto).ShouldHaveValidationErrorFor(x => x.ModelProviderId);
+    }
+    
     [Fact]
     public void Validate_UnknownProtocol_HasError()
     {

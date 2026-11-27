@@ -1,6 +1,6 @@
+using Cike.Data.Domain.Repositories;
 using Cike.MultiTenancy;
 using Cike.OS.Domain.Entities;
-using Cike.OS.Domain.Repositories;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 using Cike.OS.Domain.ValueObjects;
@@ -230,14 +230,13 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task ModelProvider_ThreeLevelAggregate_GrandchildrenGetIdTenantAndSoftDelete()
+    public async Task ModelProviderEndpoint_AsAggregateRoot_GetsIdTenantAndSoftDeletesMappings()
     {
-        // 提供方 → 接入点 → 映射是仓库里第一个三层聚合：孙实体的 Id / 租户 / 软删行为没有文档依据，在这里实测
+        // 接入点与模型提供方是两个聚合：接入点作为聚合根自己拿 Id / 写租户，映射随它保存；加载用通用仓储的一级预加载
         const long tenantId = 7;
         long providerId;
-        long removedEndpointId;
+        long endpointId;
         long removedMappingId;
-        long keptEndpointId;
         long keptMappingId;
         long modelId;
 
@@ -248,112 +247,124 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
 
             var model = ModelEntity.Create("gpt-4o", "GPT-4o", "OpenAI flagship model", []);
             dbContext.Add(model);
+            var provider = ModelProvider.Create("Smoke provider");
+            dbContext.Add(provider);
             await dbContext.SaveChangesAsync();
             modelId = model.Id;
+            providerId = provider.Id;
 
-            // 接入点与映射是聚合内子实体：只能经聚合根的意图方法加入，与聚合根一起落库
-            var provider = ModelProvider.Create("Smoke provider");
-            var first = provider.AddEndpoint(
+            var endpoint = ModelProviderEndpoint.Create(
+                providerId,
                 ModelProviderProtocol.OpenAIChatCompletion,
                 "官方",
                 "https://api.openai.com/v1",
                 "sk-test",
-                new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
-                [new ModelProviderEndpoint.MappingInput(modelId, 10, "gpt-4o-2024-11-20")]);
-            dbContext.Add(provider);
+                new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" });
+            endpoint.SyncMappings(
+            [
+                new ModelProviderEndpoint.MappingInput(modelId, 10, "gpt-4o-2024-11-20"),
+                new ModelProviderEndpoint.MappingInput(modelId + 1, 5, null),
+            ]);
+            dbContext.Add(endpoint);
             await dbContext.SaveChangesAsync();
 
-            providerId = provider.Id;
-            removedEndpointId = first.Id;
-            removedMappingId = first.Mappings[0].Id;
+            // 聚合根与它的子实体随保存各自拿到雪花 Id、写入租户
+            endpointId = endpoint.Id;
+            removedMappingId = endpoint.Mappings[0].Id;
+            keptMappingId = endpoint.Mappings[1].Id;
+            Assert.True(endpointId > 0);
+            Assert.True(keptMappingId > 0);
+            Assert.Equal(tenantId, endpoint.TenantId);
+            Assert.Equal(providerId, endpoint.ModelProviderId);
         }
 
         using (var scope = _host.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
             using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
 
-            // 自定义仓储：两级 Include 一次把接入点与映射查全（通用仓储的 WithDetails 只能预加载一级）
-            var repository = scope.ServiceProvider.GetRequiredService<IModelProviderRepository>();
-            var provider = await repository.FindWithEndpointsAsync(providerId);
-            Assert.NotNull(provider);
-
-            var removedEndpoint = Assert.Single(provider.Endpoints);
-            var removedMapping = Assert.Single(removedEndpoint.Mappings);
-            Assert.Equal(removedEndpointId, removedEndpoint.Id);
-            Assert.Equal(removedMappingId, removedMapping.Id);
-
-            // 孙实体随聚合保存时自动生成雪花 Id、写入租户，外键由 EF 关系修正回填
-            Assert.True(removedMapping.Id > 0);
-            Assert.Equal(tenantId, removedEndpoint.TenantId);
-            Assert.Equal(tenantId, removedMapping.TenantId);
-            Assert.Equal(providerId, removedEndpoint.ModelProviderId);
-            Assert.Equal(removedEndpointId, removedMapping.ModelProviderEndpointId);
-            var setting = Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(removedEndpoint.Setting);
+            // 通用仓储的一级预加载：接入点连同它的映射一次查全
+            var repository = scope.ServiceProvider.GetRequiredService<IRepository<ModelProviderEndpoint, long>>();
+            var loaded = Assert.Single(await repository.ToListAsync(
+                repository.WithDetails(x => x.Mappings).Where(x => x.Id == endpointId)));
+            Assert.Equal(2, loaded.Mappings.Count);
+            Assert.All(loaded.Mappings, x => Assert.Equal((tenantId, endpointId), (x.TenantId, x.ModelProviderEndpointId)));
+            var setting = Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(loaded.Setting);
             Assert.Equal("org-1", setting.Organization);
 
-            // 既有聚合根再添加一个接入点：新子实体同样自动拿到 Id、写入租户
-            var added = provider.AddEndpoint(
-                ModelProviderProtocol.Anthropic,
-                "官方 Anthropic",
-                "https://api.anthropic.com",
-                "ak-test",
-                new AnthropicModelProviderEndpointSetting(),
-                [new ModelProviderEndpoint.MappingInput(modelId, 5, null)]);
-            await dbContext.SaveChangesAsync();
-            keptEndpointId = added.Id;
-            keptMappingId = added.Mappings[0].Id;
-            Assert.True(keptEndpointId > 0);
-            Assert.True(keptMappingId > 0);
+            // 同步映射只留一条：被移除的映射在保存时转软删
+            loaded.SyncMappings([new ModelProviderEndpoint.MappingInput(modelId + 1, 5, null)]);
+            await repository.UpdateAsync(loaded);
 
-            // 修改接入点并同步映射：未提交的映射被移除，保存时转软删
-            provider.UpdateEndpoint(
-                removedEndpointId,
-                "官方",
-                "https://vip.api.openai.com/v1",
-                "sk-new",
-                new OpenAIChatCompletionModelProviderEndpointSetting(),
-                []);
-            await dbContext.SaveChangesAsync();
-
-            // 移除接入点：接入点与其映射一并软删
-            provider.RemoveEndpoint(removedEndpointId);
-            await dbContext.SaveChangesAsync();
-        }
-
-        using (var scope = _host.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
-
-            var repository = scope.ServiceProvider.GetRequiredService<IModelProviderRepository>();
-            var provider = await repository.FindWithEndpointsAsync(providerId);
-            Assert.Equal("官方 Anthropic", Assert.Single(provider!.Endpoints).Name);
-
-            // 删聚合根：先连同两层子集合加载跟踪，接入点与映射才会跟着软删（软删不触发数据库级联）
-            dbContext.Remove(provider);
-            await dbContext.SaveChangesAsync();
+            // 删接入点：它和仍在名下的映射一并软删
+            await repository.DeleteAsync(loaded);
         }
 
         using (var scope = _host.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
-            Assert.False(await dbContext.ModelProviders.IgnoreQueryFilters().AnyAsync(x => x.Id == providerId && !x.IsDeleted));
-
-            var endpoints = await dbContext.ModelProviderEndpoints.IgnoreQueryFilters()
-                .Where(x => x.ModelProviderId == providerId)
-                .ToListAsync();
-            Assert.Equal(2, endpoints.Count);
-            Assert.All(endpoints, x => Assert.True(x.IsDeleted));
+            var endpoint = await dbContext.ModelProviderEndpoints.IgnoreQueryFilters().SingleAsync(x => x.Id == endpointId);
+            Assert.True(endpoint.IsDeleted);
 
             var mappings = await dbContext.ModelProviderMappings.IgnoreQueryFilters()
-                .Where(x => x.ModelId == modelId && x.TenantId == tenantId)
+                .Where(x => x.ModelProviderEndpointId == endpointId)
                 .ToListAsync();
             Assert.Equal(2, mappings.Count);
             Assert.All(mappings, x => Assert.True(x.IsDeleted));
             Assert.Contains(mappings, x => x.Id == removedMappingId);
             Assert.Contains(mappings, x => x.Id == keptMappingId);
+
+            // 提供方不受影响：两个聚合各自独立
+            Assert.False((await dbContext.ModelProviders.IgnoreQueryFilters().SingleAsync(x => x.Id == providerId)).IsDeleted);
+        }
+
+        // 删提供方：接入点是独立聚合，不会自动跟着删——用例里连同映射加载后批量删接入点、再删提供方，三者都是软删
+        long secondEndpointId;
+        using (var scope = _host.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
+
+            var second = ModelProviderEndpoint.Create(
+                providerId,
+                ModelProviderProtocol.Anthropic,
+                "官方 Anthropic",
+                "https://api.anthropic.com",
+                "ak-test",
+                new AnthropicModelProviderEndpointSetting());
+            second.SyncMappings([new ModelProviderEndpoint.MappingInput(modelId, 5, null)]);
+            dbContext.Add(second);
+            await dbContext.SaveChangesAsync();
+            secondEndpointId = second.Id;
+        }
+
+        using (var scope = _host.CreateScope())
+        {
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
+
+            var endpointRepository = scope.ServiceProvider.GetRequiredService<IRepository<ModelProviderEndpoint, long>>();
+            var providerRepository = scope.ServiceProvider.GetRequiredService<IRepository<ModelProvider, long>>();
+            var endpoints = await endpointRepository.ToListAsync(
+                endpointRepository.WithDetails(x => x.Mappings).Where(x => x.ModelProviderId == providerId));
+            await endpointRepository.DeleteManyAsync(endpoints);
+            var provider = await providerRepository.FindAsync(providerId) ?? throw new InvalidOperationException();
+            await providerRepository.DeleteAsync(provider);
+        }
+
+        using (var scope = _host.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+
+            Assert.True((await dbContext.ModelProviders.IgnoreQueryFilters().SingleAsync(x => x.Id == providerId)).IsDeleted);
+            var endpoints = await dbContext.ModelProviderEndpoints.IgnoreQueryFilters()
+                .Where(x => x.ModelProviderId == providerId)
+                .ToListAsync();
+            Assert.Equal(2, endpoints.Count);
+            Assert.Contains(endpoints, x => x.Id == secondEndpointId);
+            Assert.All(endpoints, x => Assert.True(x.IsDeleted));
+            Assert.All(
+                await dbContext.ModelProviderMappings.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ToListAsync(),
+                x => Assert.True(x.IsDeleted));
         }
     }
 

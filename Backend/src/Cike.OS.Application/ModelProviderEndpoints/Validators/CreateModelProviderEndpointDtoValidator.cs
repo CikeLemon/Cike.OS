@@ -1,18 +1,20 @@
-using Cike.OS.Application.Contracts.ModelProviders.Dtos;
+using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 using FluentValidation;
 
-namespace Cike.OS.Application.ModelProviders.Validators;
+namespace Cike.OS.Application.ModelProviderEndpoints.Validators;
 
 /// <summary>
-/// 接入点新建输入的校验。接入点重名、接入点 Id 是否在提供方名下、映射的模型是否存在，由 Handler 与聚合裁决；
-/// 设置子类型是否与该接入点现有协议一致（更新时没有协议可比），由聚合裁决。
+/// 接入点新建输入的校验。所属提供方是否存在、接入点重名、映射的模型是否存在，由 Handler 查库裁决。
 /// </summary>
 public class CreateModelProviderEndpointDtoValidator : AbstractValidator<CreateModelProviderEndpointDto>
 {
     public CreateModelProviderEndpointDtoValidator()
     {
+        RuleFor(x => x.ModelProviderId)
+            .GreaterThan(0).WithMessage("必须选择所属的模型提供方。");
+
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("接入点名称不能为空。")
             .MaximumLength(128).WithMessage("接入点名称不能超过 128 个字符。");

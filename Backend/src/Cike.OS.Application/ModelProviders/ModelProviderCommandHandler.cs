@@ -3,12 +3,13 @@ using Cike.EventBus.Local;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Domain.Entities;
-using Cike.OS.Domain.Repositories;
 
 namespace Cike.OS.Application.ModelProviders;
 
-/// <summary>模型提供方用例：只管提供方自己的名称；接入点经它自己的用例添加 / 修改 / 移除。</summary>
-public class ModelProviderCommandHandler(IModelProviderRepository providerRepository)
+/// <summary>模型提供方用例：只管提供方自己的名称；接入点是独立的聚合，经它自己的用例增删改查。</summary>
+public class ModelProviderCommandHandler(
+    IRepository<ModelProvider, long> providerRepository,
+    IRepository<ModelProviderEndpoint, long> endpointRepository)
 {
     [LocalEventHandler]
     public async Task CreateAsync(CreateModelProviderCommand command, CancellationToken cancellationToken = default)
@@ -37,9 +38,15 @@ public class ModelProviderCommandHandler(IModelProviderRepository providerReposi
     [LocalEventHandler]
     public async Task DeleteAsync(DeleteModelProviderCommand command, CancellationToken cancellationToken = default)
     {
-        // 名下的接入点与映射随聚合一并删除：子实体必须先加载跟踪，移除后才会跟着软删
-        var provider = await providerRepository.FindWithEndpointsAsync(command.Id, cancellationToken: cancellationToken)
+        var provider = await providerRepository.FindAsync(command.Id, cancellationToken: cancellationToken)
             ?? throw new UserFriendlyException("模型提供方不存在。");
+
+        // 接入点是独立的聚合，删除提供方不会自动带走它们：逐个连同映射加载后删除，映射才会跟着软删
+        var endpoints = await endpointRepository.ToListAsync(
+            endpointRepository.WithDetails(x => x.Mappings).Where(x => x.ModelProviderId == provider.Id),
+            cancellationToken);
+        await endpointRepository.DeleteManyAsync(endpoints, cancellationToken: cancellationToken);
+
         await providerRepository.DeleteAsync(provider, cancellationToken: cancellationToken);
     }
 

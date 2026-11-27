@@ -3,17 +3,16 @@ using Cike.EventBus.Local;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Domain.Entities;
-using Cike.OS.Domain.Repositories;
 using Mapster;
 
 namespace Cike.OS.Application.ModelProviders;
 
 /// <summary>
-/// 模型提供方查询：只管提供方自己的名称，接入点经它自己的列表查询读取。
+/// 模型提供方查询：只管提供方自己的名称，接入点经它自己的查询读取。
 /// 列表不加载聚合，只做投影；详情只读聚合根本身。
 /// </summary>
 public class ModelProviderQueryHandler(
-    IModelProviderRepository providerRepository,
+    IReadOnlyRepository<ModelProvider, long> providerRepository,
     IReadOnlyRepository<ModelProviderEndpoint, long> endpointRepository,
     IReadOnlyRepository<ModelProviderMapping, long> mappingRepository,
     IReadOnlyRepository<ModelEntity, long> modelRepository)

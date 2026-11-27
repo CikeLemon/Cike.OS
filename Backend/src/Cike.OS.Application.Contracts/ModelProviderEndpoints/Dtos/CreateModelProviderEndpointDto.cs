@@ -1,11 +1,13 @@
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 
-namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
+namespace Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 
-/// <summary>接入点的新建输入：协议、连接信息、协议专属设置，以及它的全部模型映射。</summary>
+/// <summary>接入点的新建输入：所属提供方、协议、连接信息、协议专属设置，以及它的全部模型映射。协议与归属创建后都不可变。</summary>
 public class CreateModelProviderEndpointDto
 {
+    public long ModelProviderId { get; set; }
+
     public string Name { get; set; } = null!;
 
     /// <summary>协议：创建后不可变，要换协议只能删掉接入点重建。</summary>

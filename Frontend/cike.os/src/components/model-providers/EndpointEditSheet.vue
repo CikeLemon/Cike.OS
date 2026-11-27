@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ModelDto, ModelProviderEndpointDto } from '@/api'
-import { getApiV1ModelsPagedList, postApiV1ModelProvidersByIdEndpoints, putApiV1ModelProvidersByIdEndpointsByEndpointId } from '@/api'
+import {
+  getApiV1ModelProviderEndpointsById,
+  getApiV1ModelsPagedList,
+  postApiV1ModelProviderEndpoints,
+  putApiV1ModelProviderEndpointsById,
+} from '@/api'
 import { LoaderCircle, Plus, Trash } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
@@ -34,9 +39,9 @@ import { PROTOCOL_LABELS, PROTOCOL_OPTIONS, isOpenAiProtocol, type ProtocolValue
 
 const props = defineProps<{
   open: boolean
-  /** 所属模型提供方的 Id：接入点是它下的子资源，新建 / 更新走接入点自己的接口 */
+  /** 所属模型提供方的 Id：接入点是独立的聚合，只按它归属 */
   providerId: string
-  /** 传入为编辑，null 为新建；编辑态协议只读（创建后不可变） */
+  /** 传入为编辑（只用它的 Id 拉详情），null 为新建；编辑态协议只读（创建后不可变） */
   endpoint?: ModelProviderEndpointDto | null
 }>()
 
@@ -49,6 +54,13 @@ const form = reactive<EndpointFormState>(emptyEndpointForm())
 const errors = ref<Record<string, string>>({})
 const saving = ref(false)
 
+// 编辑态按接入点 Id 拉详情回填：拿到的是此刻最新的数据，不依赖列表行；拉取失败时不允许保存
+const detailLoading = ref(false)
+const detailFailed = ref(false)
+
+// 每次打开自增：关闭或改开别的接入点后，之前在途的详情响应已过期，不能回填到当前表单
+let detailSeq = 0
+
 /** 平台模型目录，供映射行下拉 */
 const models = ref<ModelDto[]>([])
 
@@ -59,12 +71,33 @@ const pendingProtocol = ref<ProtocolValue | null>(null)
 
 watch(
   () => props.open,
-  open => {
+  async open => {
+    // 关闭时也走到这里，让在途的详情请求失效
+    const seq = ++detailSeq
     if (!open) return
     errors.value = {}
     pendingProtocol.value = null
-    Object.assign(form, props.endpoint ? endpointFormFromDto(props.endpoint) : emptyEndpointForm())
+    Object.assign(form, emptyEndpointForm())
     loadModels()
+
+    const endpointId = props.endpoint?.id
+    if (!endpointId) return
+
+    detailLoading.value = true
+    detailFailed.value = false
+    try {
+      const result = await getApiV1ModelProviderEndpointsById({ path: { id: endpointId } })
+      // 过期响应：抽屉已关闭或已改开别的接入点，直接丢弃
+      if (seq !== detailSeq) return
+      if (result.error || !result.data) {
+        detailFailed.value = true
+        toast.error(getErrorMessage(result))
+        return
+      }
+      Object.assign(form, endpointFormFromDto(result.data))
+    } finally {
+      if (seq === detailSeq) detailLoading.value = false
+    }
   },
 )
 
@@ -103,21 +136,21 @@ function applyProtocol(protocol: ProtocolValue) {
 }
 
 async function submit() {
+  if (detailLoading.value || detailFailed.value) return
   errors.value = validateEndpointForm(form)
   if (Object.keys(errors.value).length > 0) return
 
   saving.value = true
   try {
-    // 只提交这一个接入点：新建调接入点的新建接口（带协议），编辑调更新接口（路由上的 endpointId 指认接入点，不带协议）
+    // 只提交这一个接入点：新建调接入点的新建接口（带归属与协议），编辑调更新接口（路由上的接入点 Id，不带归属与协议）
     const endpointId = props.endpoint?.id
     const result = isEdit.value && endpointId
-      ? await putApiV1ModelProvidersByIdEndpointsByEndpointId({
-          path: { id: props.providerId, endpointId },
+      ? await putApiV1ModelProviderEndpointsById({
+          path: { id: endpointId },
           body: endpointFormToUpdateDto(form),
         })
-      : await postApiV1ModelProvidersByIdEndpoints({
-          path: { id: props.providerId },
-          body: endpointFormToCreateDto(form),
+      : await postApiV1ModelProviderEndpoints({
+          body: endpointFormToCreateDto(form, props.providerId),
         })
 
     if (result.error) {
@@ -142,7 +175,8 @@ async function submit() {
         <SheetDescription>一个接入点 = 一种协议 + 一个接入地址 + 一把密钥，以及它接入的模型。</SheetDescription>
       </SheetHeader>
 
-      <form id="endpoint-form" class="grid flex-1 gap-6 overflow-y-auto px-6 py-4" @submit.prevent="submit">
+      <!-- content-start：grid 的隐式行默认拉伸填满高度，会把各分组撑出大段空白 -->
+      <form id="endpoint-form" class="grid flex-1 content-start gap-5 overflow-y-auto px-6 py-5" @submit.prevent="submit">
         <!-- 连接 -->
         <section class="grid gap-3">
           <h3 class="text-sm font-semibold">连接</h3>
@@ -193,7 +227,7 @@ async function submit() {
         </section>
 
         <!-- 模型映射：随接入点整体保存，没有单独的增删接口 -->
-        <section class="grid gap-3">
+        <section class="grid gap-3 border-t pt-5">
           <div class="flex items-center justify-between gap-2">
             <h3 class="text-sm font-semibold">模型映射</h3>
             <Button type="button" size="sm" variant="outline" :disabled="saving" @click="form.mappings.push(emptyMappingRow())">
@@ -233,9 +267,10 @@ async function submit() {
         </section>
       </form>
 
-      <SheetFooter class="border-t px-6 py-4">
+      <SheetFooter class="mt-0 flex-row items-center justify-end gap-2 border-t px-6 py-4">
+        <p v-if="detailFailed" class="text-destructive text-sm">接入点详情加载失败，请关闭后重试。</p>
         <Button type="button" variant="outline" :disabled="saving" @click="emit('update:open', false)">取消</Button>
-        <Button type="submit" form="endpoint-form" :disabled="saving">
+        <Button type="submit" form="endpoint-form" :disabled="saving || detailLoading || detailFailed">
           <LoaderCircle v-if="saving" class="animate-spin" />
           保存
         </Button>

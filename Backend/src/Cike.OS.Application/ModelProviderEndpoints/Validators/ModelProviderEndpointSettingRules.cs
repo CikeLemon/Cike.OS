@@ -1,7 +1,7 @@
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 
-namespace Cike.OS.Application.ModelProviders.Validators;
+namespace Cike.OS.Application.ModelProviderEndpoints.Validators;
 
 /// <summary>
 /// 协议专属设置的字段级输入校验。

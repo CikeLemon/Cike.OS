@@ -21,6 +21,7 @@ export type CreateModelProviderDto = {
 };
 
 export type CreateModelProviderEndpointDto = {
+    modelProviderId?: string;
     name?: string | null;
     protocol?: ModelProviderProtocol;
     baseUrl?: string | null;
@@ -109,6 +110,7 @@ export type ModelProviderEndpointDto = {
     createdBy?: string;
     updatedAt?: string;
     updatedBy?: string;
+    modelProviderId?: string;
     name?: string | null;
     protocol?: ModelProviderProtocol;
     baseUrl?: string | null;
@@ -358,6 +360,97 @@ export type GetResponses = {
 
 export type GetResponse = GetResponses[keyof GetResponses];
 
+export type GetApiV1ModelProviderEndpointsListData = {
+    body?: never;
+    path?: never;
+    query: {
+        modelProviderId: string;
+    };
+    url: '/api/v1/ModelProviderEndpoints/List';
+};
+
+export type GetApiV1ModelProviderEndpointsListResponses = {
+    /**
+     * OK
+     */
+    200: Array<ModelProviderEndpointDto>;
+};
+
+export type GetApiV1ModelProviderEndpointsListResponse = GetApiV1ModelProviderEndpointsListResponses[keyof GetApiV1ModelProviderEndpointsListResponses];
+
+export type DeleteApiV1ModelProviderEndpointsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviderEndpoints/{id}';
+};
+
+export type DeleteApiV1ModelProviderEndpointsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1ModelProviderEndpointsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviderEndpoints/{id}';
+};
+
+export type GetApiV1ModelProviderEndpointsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1ModelProviderEndpointsByIdResponses = {
+    /**
+     * OK
+     */
+    200: ModelProviderEndpointDto;
+};
+
+export type GetApiV1ModelProviderEndpointsByIdResponse = GetApiV1ModelProviderEndpointsByIdResponses[keyof GetApiV1ModelProviderEndpointsByIdResponses];
+
+export type PutApiV1ModelProviderEndpointsByIdData = {
+    body: UpdateModelProviderEndpointDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/ModelProviderEndpoints/{id}';
+};
+
+export type PutApiV1ModelProviderEndpointsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1ModelProviderEndpointsData = {
+    body: CreateModelProviderEndpointDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ModelProviderEndpoints';
+};
+
+export type PostApiV1ModelProviderEndpointsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1ModelProviderEndpointsResponse = PostApiV1ModelProviderEndpointsResponses[keyof PostApiV1ModelProviderEndpointsResponses];
+
 export type GetApiV1ModelProvidersListData = {
     body?: never;
     path?: never;
@@ -446,83 +539,6 @@ export type PostApiV1ModelProvidersResponses = {
 };
 
 export type PostApiV1ModelProvidersResponse = PostApiV1ModelProvidersResponses[keyof PostApiV1ModelProvidersResponses];
-
-export type GetApiV1ModelProvidersByIdEndpointsData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/ModelProviders/{id}/Endpoints';
-};
-
-export type GetApiV1ModelProvidersByIdEndpointsErrors = {
-    /**
-     * Not Found
-     */
-    404: unknown;
-};
-
-export type GetApiV1ModelProvidersByIdEndpointsResponses = {
-    /**
-     * OK
-     */
-    200: Array<ModelProviderEndpointDto>;
-};
-
-export type GetApiV1ModelProvidersByIdEndpointsResponse = GetApiV1ModelProvidersByIdEndpointsResponses[keyof GetApiV1ModelProvidersByIdEndpointsResponses];
-
-export type PostApiV1ModelProvidersByIdEndpointsData = {
-    body: CreateModelProviderEndpointDto;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/ModelProviders/{id}/Endpoints';
-};
-
-export type PostApiV1ModelProvidersByIdEndpointsResponses = {
-    /**
-     * OK
-     */
-    200: string;
-};
-
-export type PostApiV1ModelProvidersByIdEndpointsResponse = PostApiV1ModelProvidersByIdEndpointsResponses[keyof PostApiV1ModelProvidersByIdEndpointsResponses];
-
-export type DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdData = {
-    body?: never;
-    path: {
-        id: string;
-        endpointId: string;
-    };
-    query?: never;
-    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}';
-};
-
-export type DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
-
-export type PutApiV1ModelProvidersByIdEndpointsByEndpointIdData = {
-    body: UpdateModelProviderEndpointDto;
-    path: {
-        id: string;
-        endpointId: string;
-    };
-    query?: never;
-    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}';
-};
-
-export type PutApiV1ModelProvidersByIdEndpointsByEndpointIdResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
 
 export type GetApiV1ModelsPagedListData = {
     body?: never;

@@ -119,10 +119,11 @@ function resetProtocolFields(state: EndpointFormState): void {
 }
 
 /**
- * 接入点表单 → 新建请求体：协议随表单提交（创建后不可变）。
+ * 接入点表单 → 新建请求体：带所属提供方与协议（两者创建后都不可变）。
  */
-function endpointFormToCreateDto(state: EndpointFormState): CreateModelProviderEndpointDto {
+function endpointFormToCreateDto(state: EndpointFormState, modelProviderId: string): CreateModelProviderEndpointDto {
   return {
+    modelProviderId,
     name: state.name.trim(),
     protocol: state.protocol,
     baseUrl: state.baseUrl.trim(),
@@ -132,7 +133,7 @@ function endpointFormToCreateDto(state: EndpointFormState): CreateModelProviderE
   }
 }
 
-/** 接入点表单 → 更新请求体：不含协议（创建后不可变），只改名称、连接与映射。 */
+/** 接入点表单 → 更新请求体：不含归属与协议（创建后都不可变），只改名称、连接与映射。 */
 function endpointFormToUpdateDto(state: EndpointFormState): UpdateModelProviderEndpointDto {
   return {
     name: state.name.trim(),

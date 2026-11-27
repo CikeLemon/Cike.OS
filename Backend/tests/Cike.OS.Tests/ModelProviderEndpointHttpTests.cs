@@ -8,8 +8,7 @@ using Xunit;
 namespace Cike.OS.Tests;
 
 /// <summary>
-/// 接入点四条路由的 HTTP 形状：约定路由表达不了嵌套路径，这四个端点是显式指定路由的，
-/// 所以在这里用真实宿主管线打一遍——动词、路径、两个 id 段的参数绑定、校验与业务拒绝两种 400、列表 404、租户隔离。
+/// 接入点五条约定路由的 HTTP 形状：用真实宿主管线打一遍——动词、路径、列表查询串的参数绑定、校验与业务拒绝两种 400、详情的 404、租户隔离。
 /// 业务规则（重名、模型不存在、映射同步）由 ModelProviderTests 经命令 / 查询接缝覆盖，这里不重复。
 /// </summary>
 public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
@@ -25,8 +24,9 @@ public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
 
     private static StringContent Json(object body) => new(JsonSerializer.Serialize(body, Web), Encoding.UTF8, "application/json");
 
-    private static object EndpointBody(string name = "官方") => new
+    private static object EndpointBody(long modelProviderId, string name = "官方") => new
     {
+        modelProviderId,
         name,
         protocol = 1,
         baseUrl = "https://api.openai.com/v1",
@@ -48,69 +48,72 @@ public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
         return await ReadIdAsync(await http.PostAsync("/api/v1/ModelProviders", Json(new { name })));
     }
 
-    private static async Task<long> CreateEndpointAsync(HttpClient http, long providerId, string name = "官方")
+    private static async Task<long> CreateEndpointAsync(HttpClient http, long modelProviderId, string name = "官方")
     {
-        return await ReadIdAsync(await http.PostAsync($"/api/v1/ModelProviders/{providerId}/Endpoints", Json(EndpointBody(name))));
+        return await ReadIdAsync(await http.PostAsync("/api/v1/ModelProviderEndpoints", Json(EndpointBody(modelProviderId, name))));
     }
 
-    private static async Task<JsonElement> GetEndpointListAsync(HttpClient http, long providerId)
+    private static async Task<JsonElement> GetListAsync(HttpClient http, long modelProviderId)
     {
-        var response = await http.GetAsync($"/api/v1/ModelProviders/{providerId}/Endpoints");
+        var response = await http.GetAsync($"/api/v1/ModelProviderEndpoints/List?modelProviderId={modelProviderId}");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
     [Fact]
-    public async Task Get_EndpointList_OfUnknownProvider_Returns404()
+    public async Task GetDetail_OfUnknownEndpoint_Returns404()
     {
         using var http = _host.CreateClient();
 
-        var response = await http.GetAsync("/api/v1/ModelProviders/999999/Endpoints");
+        var response = await http.GetAsync("/api/v1/ModelProviderEndpoints/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task Post_CreatesEndpoint_ThenGetListReturnsIt()
+    public async Task GetList_FiltersByProviderQuery_AndReturnsEmptyForUnknownProvider()
+    {
+        using var http = _host.CreateClient();
+        var firstId = await CreateProviderAsync(http, $"http-a-{Guid.NewGuid():N}");
+        var secondId = await CreateProviderAsync(http, $"http-b-{Guid.NewGuid():N}");
+        await CreateEndpointAsync(http, firstId);
+
+        // 查询串参数按名绑定：换一个提供方 Id 得到不同结果；不存在的提供方就是空数组
+        Assert.Single((await GetListAsync(http, firstId)).EnumerateArray());
+        Assert.Empty((await GetListAsync(http, secondId)).EnumerateArray());
+        Assert.Empty((await GetListAsync(http, 999999)).EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Post_CreatesEndpoint_ThenGetDetailReturnsIt()
     {
         using var http = _host.CreateClient();
         var providerId = await CreateProviderAsync(http, $"http-{Guid.NewGuid():N}");
 
-        var response = await http.PostAsync($"/api/v1/ModelProviders/{providerId}/Endpoints", Json(EndpointBody()));
+        var response = await http.PostAsync("/api/v1/ModelProviderEndpoints", Json(EndpointBody(providerId)));
 
-        // 新建返回的 Id 是字符串形式（long → string）
+        // 新建返回的 Id 是字符串形式（long → string），详情能按它取回
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var endpointId = await ReadIdAsync(response);
         Assert.True(endpointId > 0);
 
-        var endpoint = Assert.Single((await GetEndpointListAsync(http, providerId)).EnumerateArray());
-        Assert.Equal(endpointId.ToString(), endpoint.GetProperty("id").GetString());
-        Assert.Equal("官方", endpoint.GetProperty("name").GetString());
-        Assert.Equal(1, endpoint.GetProperty("protocol").GetInt32());
-        Assert.Equal(1, endpoint.GetProperty("setting").GetProperty("type").GetInt32());
+        var detail = await http.GetFromJsonAsync<JsonElement>($"/api/v1/ModelProviderEndpoints/{endpointId}");
+        Assert.Equal(endpointId.ToString(), detail.GetProperty("id").GetString());
+        Assert.Equal(providerId.ToString(), detail.GetProperty("modelProviderId").GetString());
+        Assert.Equal("官方", detail.GetProperty("name").GetString());
+        Assert.Equal(1, detail.GetProperty("protocol").GetInt32());
+        Assert.Equal(1, detail.GetProperty("setting").GetProperty("type").GetInt32());
     }
 
     [Fact]
-    public async Task PutAndDelete_RouteIdsBindToTheirOwnSegments()
+    public async Task PutAndDelete_TargetTheEndpointOnTheRoute()
     {
         using var http = _host.CreateClient();
         var providerId = await CreateProviderAsync(http, $"swap-{Guid.NewGuid():N}");
         var endpointId = await CreateEndpointAsync(http, providerId);
 
-        // 两个 id 段各绑各的：把提供方 Id 与接入点 Id 对调，提供方查不到
-        var swapped = await http.PutAsync($"/api/v1/ModelProviders/{endpointId}/Endpoints/{providerId}", Json(new
-        {
-            name = "对调",
-            baseUrl = "https://x",
-            apiKey = "k",
-            setting = new { type = 1 },
-            mappings = Array.Empty<object>(),
-        }));
-        Assert.Equal(HttpStatusCode.BadRequest, swapped.StatusCode);
-        Assert.Contains("模型提供方不存在", await swapped.Content.ReadAsStringAsync());
-
-        // 修改：路由上是提供方 Id + 接入点 Id，请求体里没有协议
-        var updated = await http.PutAsync($"/api/v1/ModelProviders/{providerId}/Endpoints/{endpointId}", Json(new
+        // 修改：路由上只有接入点 Id，请求体里没有归属与协议
+        var updated = await http.PutAsync($"/api/v1/ModelProviderEndpoints/{endpointId}", Json(new
         {
             name = "改过了",
             baseUrl = "https://vip.api.openai.com/v1",
@@ -119,16 +122,16 @@ public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
             mappings = Array.Empty<object>(),
         }));
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
-        Assert.Equal("改过了", Assert.Single((await GetEndpointListAsync(http, providerId)).EnumerateArray()).GetProperty("name").GetString());
+        Assert.Equal("改过了", Assert.Single((await GetListAsync(http, providerId)).EnumerateArray()).GetProperty("name").GetString());
 
-        // 删除后再删一次：接入点已不在名下
-        var deleted = await http.DeleteAsync($"/api/v1/ModelProviders/{providerId}/Endpoints/{endpointId}");
+        // 删除后再删一次：接入点已不存在
+        var deleted = await http.DeleteAsync($"/api/v1/ModelProviderEndpoints/{endpointId}");
         Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
-        Assert.Empty((await GetEndpointListAsync(http, providerId)).EnumerateArray());
+        Assert.Empty((await GetListAsync(http, providerId)).EnumerateArray());
 
-        var again = await http.DeleteAsync($"/api/v1/ModelProviders/{providerId}/Endpoints/{endpointId}");
+        var again = await http.DeleteAsync($"/api/v1/ModelProviderEndpoints/{endpointId}");
         Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
-        Assert.Contains("接入点不存在", await again.Content.ReadAsStringAsync());
+        Assert.Equal("接入点不存在。", JsonSerializer.Deserialize<string>(await again.Content.ReadAsStringAsync(), Web));
     }
 
     [Fact]
@@ -137,21 +140,20 @@ public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
         using var http = _host.CreateClient();
         var providerId = await CreateProviderAsync(http, $"invalid-{Guid.NewGuid():N}");
 
-        var response = await http.PostAsync($"/api/v1/ModelProviders/{providerId}/Endpoints", Json(EndpointBody("")));
+        var response = await http.PostAsync("/api/v1/ModelProviderEndpoints", Json(EndpointBody(providerId, "")));
 
         // FluentValidation 失败：400 + application/problem+json，错误按属性名分组
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("\"name\"", body);
+        Assert.Contains("\"name\"", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
-    public async Task Post_OnUnknownProvider_ReturnsPlainText400()
+    public async Task Post_OnUnknownProvider_ReturnsMessage400()
     {
         using var http = _host.CreateClient();
 
-        var response = await http.PostAsync("/api/v1/ModelProviders/999999/Endpoints", Json(EndpointBody()));
+        var response = await http.PostAsync("/api/v1/ModelProviderEndpoints", Json(EndpointBody(999999)));
 
         // 业务拒绝：400 + 消息文本以 JSON 字串给出（与 FluentValidation 的 ProblemDetails 是两种形状）
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -164,14 +166,25 @@ public class ModelProviderEndpointHttpTests : IClassFixture<ServiceOpenTestHost>
     {
         using var tenant1 = _host.CreateClient(tenantId: 1);
         var providerId = await CreateProviderAsync(tenant1, $"tenant1-{Guid.NewGuid():N}");
-        await CreateEndpointAsync(tenant1, providerId);
+        var endpointId = await CreateEndpointAsync(tenant1, providerId);
 
-        // 租户 0 看不到租户 1 的提供方
+        // 租户 0 看不到租户 1 的接入点：列表为空、详情 404、修改按「不存在」被拒
         using var tenant0 = _host.CreateClient();
-        var invisible = await tenant0.GetAsync($"/api/v1/ModelProviders/{providerId}/Endpoints");
-        Assert.Equal(HttpStatusCode.NotFound, invisible.StatusCode);
+        Assert.Empty((await GetListAsync(tenant0, providerId)).EnumerateArray());
+        Assert.Equal(HttpStatusCode.NotFound, (await tenant0.GetAsync($"/api/v1/ModelProviderEndpoints/{endpointId}")).StatusCode);
+
+        var update = await tenant0.PutAsync($"/api/v1/ModelProviderEndpoints/{endpointId}", Json(new
+        {
+            name = "抢占",
+            baseUrl = "https://x",
+            apiKey = "k",
+            setting = new { type = 1 },
+            mappings = Array.Empty<object>(),
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+        Assert.Equal("接入点不存在。", JsonSerializer.Deserialize<string>(await update.Content.ReadAsStringAsync(), Web));
 
         // 带上租户头就能看到
-        Assert.Single((await GetEndpointListAsync(tenant1, providerId)).EnumerateArray());
+        Assert.Single((await GetListAsync(tenant1, providerId)).EnumerateArray());
     }
 }

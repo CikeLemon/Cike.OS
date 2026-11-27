@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdData, DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1ModelsByIdData, DeleteApiV1ModelsByIdResponses, DeleteApiV1TagsByIdData, DeleteApiV1TagsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdEndpointsData, GetApiV1ModelProvidersByIdEndpointsErrors, GetApiV1ModelProvidersByIdEndpointsResponses, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1ModelsByIdData, GetApiV1ModelsByIdErrors, GetApiV1ModelsByIdResponses, GetApiV1ModelsPagedListData, GetApiV1ModelsPagedListResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1TagsPagedListData, GetApiV1TagsPagedListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetData, GetResponses, PostApiV1ModelProvidersByIdEndpointsData, PostApiV1ModelProvidersByIdEndpointsResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1ModelsData, PostApiV1ModelsResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1TagsData, PostApiV1TagsResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdEndpointsByEndpointIdData, PutApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, PutApiV1ModelProvidersByIdResponses, PutApiV1ModelsByIdData, PutApiV1ModelsByIdResponses, PutApiV1TagsByIdData, PutApiV1TagsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
+import type { DeleteApiV1ModelProviderEndpointsByIdData, DeleteApiV1ModelProviderEndpointsByIdResponses, DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1ModelsByIdData, DeleteApiV1ModelsByIdResponses, DeleteApiV1TagsByIdData, DeleteApiV1TagsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1ModelProviderEndpointsByIdData, GetApiV1ModelProviderEndpointsByIdErrors, GetApiV1ModelProviderEndpointsByIdResponses, GetApiV1ModelProviderEndpointsListData, GetApiV1ModelProviderEndpointsListResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1ModelsByIdData, GetApiV1ModelsByIdErrors, GetApiV1ModelsByIdResponses, GetApiV1ModelsPagedListData, GetApiV1ModelsPagedListResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1TagsPagedListData, GetApiV1TagsPagedListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetData, GetResponses, PostApiV1ModelProviderEndpointsData, PostApiV1ModelProviderEndpointsResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1ModelsData, PostApiV1ModelsResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1TagsData, PostApiV1TagsResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1ModelProviderEndpointsByIdData, PutApiV1ModelProviderEndpointsByIdResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdResponses, PutApiV1ModelsByIdData, PutApiV1ModelsByIdResponses, PutApiV1TagsByIdData, PutApiV1TagsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -22,6 +22,44 @@ export const get = <ThrowOnError extends boolean = false>(options?: Options<GetD
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/',
     ...options
+});
+
+export const getApiV1ModelProviderEndpointsList = <ThrowOnError extends boolean = false>(options: Options<GetApiV1ModelProviderEndpointsListData, ThrowOnError>): RequestResult<GetApiV1ModelProviderEndpointsListResponses, unknown, ThrowOnError> => (options.client ?? client).get<GetApiV1ModelProviderEndpointsListResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/ModelProviderEndpoints/List',
+    ...options
+});
+
+export const deleteApiV1ModelProviderEndpointsById = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1ModelProviderEndpointsByIdData, ThrowOnError>): RequestResult<DeleteApiV1ModelProviderEndpointsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1ModelProviderEndpointsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/ModelProviderEndpoints/{id}',
+    ...options
+});
+
+export const getApiV1ModelProviderEndpointsById = <ThrowOnError extends boolean = false>(options: Options<GetApiV1ModelProviderEndpointsByIdData, ThrowOnError>): RequestResult<GetApiV1ModelProviderEndpointsByIdResponses, GetApiV1ModelProviderEndpointsByIdErrors, ThrowOnError> => (options.client ?? client).get<GetApiV1ModelProviderEndpointsByIdResponses, GetApiV1ModelProviderEndpointsByIdErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/ModelProviderEndpoints/{id}',
+    ...options
+});
+
+export const putApiV1ModelProviderEndpointsById = <ThrowOnError extends boolean = false>(options: Options<PutApiV1ModelProviderEndpointsByIdData, ThrowOnError>): RequestResult<PutApiV1ModelProviderEndpointsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).put<PutApiV1ModelProviderEndpointsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/ModelProviderEndpoints/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const postApiV1ModelProviderEndpoints = <ThrowOnError extends boolean = false>(options: Options<PostApiV1ModelProviderEndpointsData, ThrowOnError>): RequestResult<PostApiV1ModelProviderEndpointsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1ModelProviderEndpointsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/ModelProviderEndpoints',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 export const getApiV1ModelProvidersList = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ModelProvidersListData, ThrowOnError>): RequestResult<GetApiV1ModelProvidersListResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetApiV1ModelProvidersListResponses, unknown, ThrowOnError>({
@@ -55,38 +93,6 @@ export const putApiV1ModelProvidersById = <ThrowOnError extends boolean = false>
 export const postApiV1ModelProviders = <ThrowOnError extends boolean = false>(options: Options<PostApiV1ModelProvidersData, ThrowOnError>): RequestResult<PostApiV1ModelProvidersResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1ModelProvidersResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/ModelProviders',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const getApiV1ModelProvidersByIdEndpoints = <ThrowOnError extends boolean = false>(options: Options<GetApiV1ModelProvidersByIdEndpointsData, ThrowOnError>): RequestResult<GetApiV1ModelProvidersByIdEndpointsResponses, GetApiV1ModelProvidersByIdEndpointsErrors, ThrowOnError> => (options.client ?? client).get<GetApiV1ModelProvidersByIdEndpointsResponses, GetApiV1ModelProvidersByIdEndpointsErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/ModelProviders/{id}/Endpoints',
-    ...options
-});
-
-export const postApiV1ModelProvidersByIdEndpoints = <ThrowOnError extends boolean = false>(options: Options<PostApiV1ModelProvidersByIdEndpointsData, ThrowOnError>): RequestResult<PostApiV1ModelProvidersByIdEndpointsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1ModelProvidersByIdEndpointsResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/ModelProviders/{id}/Endpoints',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const deleteApiV1ModelProvidersByIdEndpointsByEndpointId = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdData, ThrowOnError>): RequestResult<DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}',
-    ...options
-});
-
-export const putApiV1ModelProvidersByIdEndpointsByEndpointId = <ThrowOnError extends boolean = false>(options: Options<PutApiV1ModelProvidersByIdEndpointsByEndpointIdData, ThrowOnError>): RequestResult<PutApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, unknown, ThrowOnError> => (options.client ?? client).put<PutApiV1ModelProvidersByIdEndpointsByEndpointIdResponses, unknown, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/ModelProviders/{id}/Endpoints/{endpointId}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

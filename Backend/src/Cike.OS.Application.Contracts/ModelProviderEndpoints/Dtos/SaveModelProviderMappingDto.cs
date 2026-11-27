@@ -1,4 +1,4 @@
-namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
+namespace Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 
 /// <summary>提供商映射的一条输入：随接入点提交，以 ModelId 为键（已映射的更新、新的新增、未提交的移除）。没有独立接口。</summary>
 public class SaveModelProviderMappingDto

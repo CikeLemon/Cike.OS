@@ -21,8 +21,9 @@ function validOpenAi() {
 }
 
 describe('endpoint-form', () => {
-  it('新建请求体：去首尾空白、协议为 1、设置只带组织标识，没有映射时为空数组', () => {
-    expect(endpointFormToCreateDto(validOpenAi())).toEqual({
+  it('新建请求体：带所属提供方、去首尾空白、协议为 1、设置只带组织标识，没有映射时为空数组', () => {
+    expect(endpointFormToCreateDto(validOpenAi(), '100')).toEqual({
+      modelProviderId: '100',
       name: '官方',
       protocol: 1,
       baseUrl: 'https://api.example.com/v1',
@@ -32,7 +33,7 @@ describe('endpoint-form', () => {
     })
   })
 
-  it('更新请求体：不含协议与 id（协议创建后不可变，由路由上的 id 指认接入点）；未填的协议专属字段为 null', () => {
+  it('更新请求体：不含归属、协议与 id（创建后都不可变，由路由上的 id 指认接入点）；未填的协议专属字段为 null', () => {
     const body = endpointFormToUpdateDto({ ...validOpenAi(), protocol: 2, version: '' })
     expect(body).toEqual({
       name: '官方',
@@ -44,7 +45,7 @@ describe('endpoint-form', () => {
   })
 
   it('OpenAI Response 协议：判别键为 3，专属字段同样是组织标识', () => {
-    const body = endpointFormToCreateDto({ ...validOpenAi(), protocol: 3 })
+    const body = endpointFormToCreateDto({ ...validOpenAi(), protocol: 3 }, '100')
     expect(body.protocol).toBe(3)
     expect(body.setting).toEqual({ type: 3, organization: 'org-1' })
   })
@@ -54,7 +55,7 @@ describe('endpoint-form', () => {
       ...validOpenAi(),
       mappings: [{ ...emptyMappingRow(), modelId: '7', priority: '30', providerModelName: ' zhipu/glm ' }, { ...emptyMappingRow(), modelId: '9' }],
     }
-    expect(endpointFormToCreateDto(state).mappings).toEqual([
+    expect(endpointFormToCreateDto(state, '100').mappings).toEqual([
       { modelId: '7', priority: 30, providerModelName: 'zhipu/glm' },
       { modelId: '9', priority: 0, providerModelName: null },
     ])

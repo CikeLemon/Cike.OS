@@ -1,7 +1,7 @@
-using Cike.OS.Application.Contracts.ModelProviders.Dtos;
+using Cike.OS.Application.Contracts.ModelProviderEndpoints.Dtos;
 using FluentValidation;
 
-namespace Cike.OS.Application.ModelProviders.Validators;
+namespace Cike.OS.Application.ModelProviderEndpoints.Validators;
 
 /// <summary>提供商映射的输入项：以 ModelId 为键随接入点整体提交，没有独立接口。模型是否存在、同一接入点下是否重复，由 Handler 与聚合裁决。</summary>
 public class SaveModelProviderMappingDtoValidator : AbstractValidator<SaveModelProviderMappingDto>

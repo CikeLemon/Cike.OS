@@ -1,15 +1,19 @@
+using Cike.OS.Domain.Shared.Enums;
+using Cike.OS.Domain.Shared.ValueObjects;
+
 namespace Cike.OS.Domain.Entities;
 
 /// <summary>
-/// 接入点（模型提供方聚合内的子实体）：提供方的一种连接入口——用哪种协议、哪个接入地址、哪把密钥，
-/// 以及它接入了哪些模型（<see cref="Mappings"/>，接入点下的子实体）。
-/// 只能经 <see cref="ModelProvider"/> 的意图方法创建 / 修改，没有独立的聚合根。
-/// 非空 / 长度等单字段规则一律在 FluentValidation，这里只断言设置子类型与协议匹配。
+/// 接入点（租户级聚合根）：模型提供方的一种连接入口——用哪种协议、哪个接入地址、哪把密钥，
+/// 以及它接入了哪些模型（<see cref="Mappings"/>，接入点聚合内的子实体）。
+/// 与模型提供方是两个聚合，按 Id 引用（<see cref="ModelProviderId"/>）；提供方上不持有接入点集合。
+/// 非空 / 长度等单字段规则一律在 FluentValidation，这里只断言设置子类型与协议匹配、同一模型只映射一次。
 /// </summary>
-public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
+public class ModelProviderEndpoint : FullAuditedAggregateRoot<long>, IMultiTenant
 {
     public long TenantId { get; set; }
 
+    /// <summary>所属的模型提供方：创建后不可变。</summary>
     public long ModelProviderId { get; private set; }
 
     public string Name { get; private set; } = null!;
@@ -33,8 +37,8 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
     {
     }
 
-    // 只允许聚合根创建与修改子实体，Handler 不直接碰
-    internal static ModelProviderEndpoint Create(
+    public static ModelProviderEndpoint Create(
+        long modelProviderId,
         ModelProviderProtocol protocol,
         string name,
         string baseUrl,
@@ -45,6 +49,7 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
 
         return new ModelProviderEndpoint
         {
+            ModelProviderId = modelProviderId,
             Protocol = protocol,
             Name = name,
             BaseUrl = baseUrl,
@@ -53,7 +58,8 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
         };
     }
 
-    internal void Update(string name, string baseUrl, string apiKey, ModelProviderEndpointSetting setting)
+    /// <summary>修改连接信息；协议创建后不可变，不在修改之列。</summary>
+    public void Update(string name, string baseUrl, string apiKey, ModelProviderEndpointSetting setting)
     {
         AssertSettingMatchesProtocol(Protocol, setting);
 
@@ -67,7 +73,7 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
     /// 按提交的映射整体同步（以模型为键）：已映射的模型更新分数与提供商侧模型名，新出现的模型新增，未提交的移除。
     /// 一个接入点对一个模型只保留一条映射是聚合内部不变量，输入里重复的模型在这里被拒。
     /// </summary>
-    internal void SyncMappings(IEnumerable<MappingInput> mappings)
+    public void SyncMappings(IEnumerable<MappingInput> mappings)
     {
         var submitted = new List<MappingInput>();
         foreach (var mapping in mappings)
@@ -82,6 +88,7 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
 
         var modelIds = submitted.Select(x => x.ModelId).ToHashSet();
 
+        // 从集合移除后，已加载跟踪的映射在保存时一并软删
         foreach (var mapping in Mappings.Where(x => !modelIds.Contains(x.ModelId)).ToList())
         {
             Mappings.Remove(mapping);
