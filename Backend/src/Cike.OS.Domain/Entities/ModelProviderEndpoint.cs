@@ -103,8 +103,9 @@ public class ModelProviderEndpoint : FullAuditedEntity<long>, IMultiTenant
     {
         var matches = (protocol, setting) switch
         {
-            (ModelProviderProtocol.OpenAI, OpenAIModelProviderEndpointSetting) => true,
+            (ModelProviderProtocol.OpenAIChatCompletion, OpenAIChatCompletionModelProviderEndpointSetting) => true,
             (ModelProviderProtocol.Anthropic, AnthropicModelProviderEndpointSetting) => true,
+            (ModelProviderProtocol.OpenAIResponse, OpenAIResponseModelProviderEndpointSetting) => true,
             _ => false,
         };
 

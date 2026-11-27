@@ -7,13 +7,22 @@ namespace Cike.OS.Domain.Shared.ValueObjects;
 /// 基类上不放「当前是哪个协议」的投影属性：它是哪个子类，就已经说明了协议。
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(OpenAIModelProviderEndpointSetting), (int)ModelProviderProtocol.OpenAI)]
+[JsonDerivedType(typeof(OpenAIChatCompletionModelProviderEndpointSetting), (int)ModelProviderProtocol.OpenAIChatCompletion)]
 [JsonDerivedType(typeof(AnthropicModelProviderEndpointSetting), (int)ModelProviderProtocol.Anthropic)]
+[JsonDerivedType(typeof(OpenAIResponseModelProviderEndpointSetting), (int)ModelProviderProtocol.OpenAIResponse)]
 public abstract class ModelProviderEndpointSetting
 {
 }
 
-public class OpenAIModelProviderEndpointSetting : ModelProviderEndpointSetting
+/// <summary>OpenAI Chat Completion 协议的专属设置。</summary>
+public class OpenAIChatCompletionModelProviderEndpointSetting : ModelProviderEndpointSetting
+{
+    /// <summary>OpenAI 组织标识（请求头 OpenAI-Organization），可选。</summary>
+    public string? Organization { get; set; }
+}
+
+/// <summary>OpenAI Response 协议的专属设置。</summary>
+public class OpenAIResponseModelProviderEndpointSetting : ModelProviderEndpointSetting
 {
     /// <summary>OpenAI 组织标识（请求头 OpenAI-Organization），可选。</summary>
     public string? Organization { get; set; }

@@ -20,6 +20,11 @@ export type CreateModelProviderDto = {
     name?: string | null;
 };
 
+export type CreateTagDto = {
+    key?: string | null;
+    name?: string | null;
+};
+
 export type CreateToolDto = {
     code?: string | null;
     name?: string | null;
@@ -92,28 +97,40 @@ export type ModelProviderDto = {
 
 export type ModelProviderEndpointDto = {
     id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
     name?: string | null;
     protocol?: ModelProviderProtocol;
     baseUrl?: string | null;
     apiKey?: string | null;
-    setting?: OpenAiModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
+    setting?: OpenAiChatCompletionModelProviderEndpointSetting | OpenAiResponseModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
     mappings?: Array<ModelProviderMappingDto> | null;
 };
 
 export type ModelProviderEndpointSetting = {
-    type: 1 | 2;
+    type: 1 | 2 | 3;
 };
 
 export type ModelProviderListDto = {
     id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
     name?: string | null;
     protocols?: Array<ModelProviderProtocol> | null;
     modelDisplayNames?: Array<string> | null;
     endpointCount?: number;
-    updatedAt?: string;
 };
 
 export type ModelProviderMappingDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
     modelId?: string;
     modelDisplayName?: string | null;
     priority?: number;
@@ -121,13 +138,18 @@ export type ModelProviderMappingDto = {
 };
 
 /**
- * {"OpenAI":1, "Anthropic":2}
+ * {"OpenAIChatCompletion":1, "Anthropic":2, "OpenAIResponse":3}
  */
-export type ModelProviderProtocol = 1 | 2;
+export type ModelProviderProtocol = 1 | 2 | 3;
 
-export type OpenAiModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
+export type OpenAiChatCompletionModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
     organization?: string | null;
     type: 1;
+};
+
+export type OpenAiResponseModelProviderEndpointSetting = Omit<ModelProviderEndpointSetting, 'type'> & {
+    organization?: string | null;
+    type: 3;
 };
 
 export type SaveModelProviderEndpointDto = {
@@ -136,7 +158,7 @@ export type SaveModelProviderEndpointDto = {
     protocol?: ModelProviderProtocol;
     baseUrl?: string | null;
     apiKey?: string | null;
-    setting?: OpenAiModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
+    setting?: OpenAiChatCompletionModelProviderEndpointSetting | OpenAiResponseModelProviderEndpointSetting | AnthropicModelProviderEndpointSetting | null;
     mappings?: Array<SaveModelProviderMappingDto> | null;
 };
 
@@ -177,6 +199,11 @@ export type TagDto = {
     updatedBy?: string;
     key?: string | null;
     name?: string | null;
+};
+
+export type TagDtoPagedResultDto = {
+    total?: string;
+    items?: Array<TagDto> | null;
 };
 
 export type ToolDto = {
@@ -265,6 +292,10 @@ export type UpdateModelDto = {
 export type UpdateModelProviderDto = {
     name?: string | null;
     endpoints?: Array<SaveModelProviderEndpointDto> | null;
+};
+
+export type UpdateTagDto = {
+    name?: string | null;
 };
 
 export type UpdateToolDto = {
@@ -538,6 +569,75 @@ export type GetApiV1TagsListResponses = {
 };
 
 export type GetApiV1TagsListResponse = GetApiV1TagsListResponses[keyof GetApiV1TagsListResponses];
+
+export type GetApiV1TagsPagedListData = {
+    body?: never;
+    path?: never;
+    query: {
+        keyword?: string;
+        Page: number;
+        PageSize: number;
+        Sorting?: string;
+    };
+    url: '/api/v1/Tags/PagedList';
+};
+
+export type GetApiV1TagsPagedListResponses = {
+    /**
+     * OK
+     */
+    200: TagDtoPagedResultDto;
+};
+
+export type GetApiV1TagsPagedListResponse = GetApiV1TagsPagedListResponses[keyof GetApiV1TagsPagedListResponses];
+
+export type PostApiV1TagsData = {
+    body: CreateTagDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Tags';
+};
+
+export type PostApiV1TagsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1TagsResponse = PostApiV1TagsResponses[keyof PostApiV1TagsResponses];
+
+export type DeleteApiV1TagsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Tags/{id}';
+};
+
+export type DeleteApiV1TagsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PutApiV1TagsByIdData = {
+    body: UpdateTagDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Tags/{id}';
+};
+
+export type PutApiV1TagsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
 
 export type GetApiV1ToolPackageCategoriesListData = {
     body?: never;

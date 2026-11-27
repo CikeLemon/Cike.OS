@@ -10,7 +10,7 @@ interface MappingRow {
   providerModelName: string
 }
 
-/** 接入点表单状态：两种协议的专属字段并存，提交时只取当前协议；映射随接入点整体提交 */
+/** 接入点表单状态：各协议的专属字段并存，提交时只取当前协议；映射随接入点整体提交 */
 interface EndpointFormState {
   name: string
   protocol: ProtocolValue
@@ -38,7 +38,7 @@ function emptyMappingRow(): MappingRow {
 function emptyEndpointForm(): EndpointFormState {
   return {
     name: '',
-    protocol: MODEL_PROVIDER_PROTOCOL.OpenAI,
+    protocol: MODEL_PROVIDER_PROTOCOL.OpenAIChatCompletion,
     baseUrl: '',
     apiKey: '',
     organization: '',
@@ -51,10 +51,14 @@ function endpointFormFromDto(dto: ModelProviderEndpointDto | null | undefined): 
   const setting = dto?.setting
   return {
     name: dto?.name ?? '',
-    protocol: dto?.protocol ?? MODEL_PROVIDER_PROTOCOL.OpenAI,
+    protocol: dto?.protocol ?? MODEL_PROVIDER_PROTOCOL.OpenAIChatCompletion,
     baseUrl: dto?.baseUrl ?? '',
     apiKey: dto?.apiKey ?? '',
-    organization: setting?.type === MODEL_PROVIDER_PROTOCOL.OpenAI ? (setting.organization ?? '') : '',
+    // 两种 OpenAI 协议的设置子类不同，专属字段同为组织标识（按判别键收窄类型）
+    organization:
+      setting?.type === MODEL_PROVIDER_PROTOCOL.OpenAIChatCompletion || setting?.type === MODEL_PROVIDER_PROTOCOL.OpenAIResponse
+        ? (setting.organization ?? '')
+        : '',
     version: setting?.type === MODEL_PROVIDER_PROTOCOL.Anthropic ? (setting.version ?? '') : '',
     mappings: (dto?.mappings ?? []).map(mapping => ({
       rowKey: ++nextRowKey,
@@ -65,13 +69,17 @@ function endpointFormFromDto(dto: ModelProviderEndpointDto | null | undefined): 
   }
 }
 
-/** 协议专属设置：只带当前协议的字段，未填即 null */
+/** 协议专属设置：只带当前协议的字段，未填即 null；判别键与协议一致 */
 function protocolSetting(state: EndpointFormState): AnyEndpointSetting {
   if (state.protocol === MODEL_PROVIDER_PROTOCOL.Anthropic) {
     return { type: MODEL_PROVIDER_PROTOCOL.Anthropic, version: state.version.trim() || null }
   }
 
-  return { type: MODEL_PROVIDER_PROTOCOL.OpenAI, organization: state.organization.trim() || null }
+  if (state.protocol === MODEL_PROVIDER_PROTOCOL.OpenAIResponse) {
+    return { type: MODEL_PROVIDER_PROTOCOL.OpenAIResponse, organization: state.organization.trim() || null }
+  }
+
+  return { type: MODEL_PROVIDER_PROTOCOL.OpenAIChatCompletion, organization: state.organization.trim() || null }
 }
 
 /** 映射行转提交项：分数转数字，空白提供商侧模型名归 null（表示回落模型名称） */

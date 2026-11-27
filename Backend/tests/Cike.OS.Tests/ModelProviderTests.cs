@@ -191,7 +191,7 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
         var row = query.Result!.Single(x => x.Id == providerId);
 
         // 协议去重并按枚举顺序；模型跨接入点去重、分数高的在前；接入点数是全部接入点
-        Assert.Equal([ModelProviderProtocol.OpenAI, ModelProviderProtocol.Anthropic], row.Protocols);
+        Assert.Equal([ModelProviderProtocol.OpenAIChatCompletion, ModelProviderProtocol.Anthropic], row.Protocols);
         Assert.Equal(3, row.EndpointCount);
         Assert.True(row.ModelDisplayNames.Count == 2);
         Assert.Contains("高分", row.ModelDisplayNames[0]);
@@ -249,10 +249,10 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
         Assert.Equal(["官方 Anthropic", "官方 OpenAI"], provider.Endpoints.Select(x => x.Name).ToList());
 
         var openAi = provider.Endpoints.Single(x => x.Id == openAiId);
-        Assert.Equal(ModelProviderProtocol.OpenAI, openAi.Protocol);
+        Assert.Equal(ModelProviderProtocol.OpenAIChatCompletion, openAi.Protocol);
         Assert.Equal("https://api.openai.com/v1", openAi.BaseUrl);
         Assert.Equal("sk-test", openAi.ApiKey);
-        Assert.Equal("org-1", Assert.IsType<OpenAIModelProviderEndpointSetting>(openAi.Setting).Organization);
+        Assert.Equal("org-1", Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(openAi.Setting).Organization);
 
         var anthropic = provider.Endpoints.Single(x => x.Id == anthropicId);
         Assert.Equal(ModelProviderProtocol.Anthropic, anthropic.Protocol);
@@ -262,13 +262,25 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
+    public async Task Create_OpenAIResponseEndpoint_StoresResponseSetting()
+    {
+        var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"response-{Guid.NewGuid():N}");
+        await AddEndpointAsync(providerId, TestDataFactory.Endpoint(
+            "官方 Response", ModelProviderProtocol.OpenAIResponse, baseUrl: "https://api.openai.com/v1"));
+
+        var endpoint = Assert.Single((await GetProviderAsync(providerId)).Endpoints);
+        Assert.Equal(ModelProviderProtocol.OpenAIResponse, endpoint.Protocol);
+        Assert.Equal("org-1", Assert.IsType<OpenAIResponseModelProviderEndpointSetting>(endpoint.Setting).Organization);
+    }
+
+    [Fact]
     public async Task Create_WithoutProtocolSpecificFields_StoresNull()
     {
         var providerId = await TestDataFactory.CreateModelProviderAsync(_host, $"nulls-{Guid.NewGuid():N}");
-        await AddEndpointAsync(providerId, TestDataFactory.Endpoint(setting: new OpenAIModelProviderEndpointSetting()));
+        await AddEndpointAsync(providerId, TestDataFactory.Endpoint(setting: new OpenAIChatCompletionModelProviderEndpointSetting()));
 
         var provider = await GetProviderAsync(providerId);
-        Assert.Null(Assert.IsType<OpenAIModelProviderEndpointSetting>(Assert.Single(provider.Endpoints).Setting).Organization);
+        Assert.Null(Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(Assert.Single(provider.Endpoints).Setting).Organization);
     }
 
     [Fact]
@@ -309,7 +321,7 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
             providerId, endpointId, TestDataFactory.Endpoint(protocol: ModelProviderProtocol.Anthropic)));
         Assert.Contains("协议创建后不可修改", ex.Message);
 
-        Assert.Equal(ModelProviderProtocol.OpenAI, (await GetEndpointAsync(providerId, endpointId)).Protocol);
+        Assert.Equal(ModelProviderProtocol.OpenAIChatCompletion, (await GetEndpointAsync(providerId, endpointId)).Protocol);
     }
 
     [Fact]

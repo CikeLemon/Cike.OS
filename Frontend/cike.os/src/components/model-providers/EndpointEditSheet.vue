@@ -30,7 +30,7 @@ import {
 } from '@/components/model-providers/endpoint-form'
 import { providerUpdateBody, upsertEndpoint } from '@/components/model-providers/provider-form'
 import { getErrorMessage } from '@/lib/errors'
-import { MODEL_PROVIDER_PROTOCOL, PROTOCOL_LABELS, PROTOCOL_OPTIONS, type ProtocolValue } from '@/lib/model-provider-protocol'
+import { PROTOCOL_LABELS, PROTOCOL_OPTIONS, isOpenAiProtocol, type ProtocolValue } from '@/lib/model-provider-protocol'
 
 const props = defineProps<{
   open: boolean
@@ -177,8 +177,8 @@ async function submit() {
               <p v-if="errors.apiKey" class="text-destructive text-sm">{{ errors.apiKey }}</p>
             </div>
           </div>
-          <!-- 协议专属字段：均为可选 -->
-          <div v-if="form.protocol === MODEL_PROVIDER_PROTOCOL.OpenAI" class="grid gap-1.5 sm:max-w-[calc(50%-0.375rem)]">
+          <!-- 协议专属字段：均为可选；两种 OpenAI 协议共用组织标识 -->
+          <div v-if="isOpenAiProtocol(form.protocol)" class="grid gap-1.5 sm:max-w-[calc(50%-0.375rem)]">
             <Label for="endpoint-organization">组织标识</Label>
             <Input id="endpoint-organization" v-model="form.organization" placeholder="可选，请求头 OpenAI-Organization" autocomplete="off" />
           </div>

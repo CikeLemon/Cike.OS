@@ -26,8 +26,9 @@ internal static class ModelProviderEndpointSettingRules
     /// <summary>设置是哪个子类，就对应哪种协议。</summary>
     private static bool Matches(ModelProviderProtocol protocol, ModelProviderEndpointSetting setting) => (protocol, setting) switch
     {
-        (ModelProviderProtocol.OpenAI, OpenAIModelProviderEndpointSetting) => true,
+        (ModelProviderProtocol.OpenAIChatCompletion, OpenAIChatCompletionModelProviderEndpointSetting) => true,
         (ModelProviderProtocol.Anthropic, AnthropicModelProviderEndpointSetting) => true,
+        (ModelProviderProtocol.OpenAIResponse, OpenAIResponseModelProviderEndpointSetting) => true,
         _ => false,
     };
 }

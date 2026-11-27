@@ -256,11 +256,11 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             provider.SyncEndpoints([
                 new ModelProvider.EndpointInput(
                     0,
-                    ModelProviderProtocol.OpenAI,
+                    ModelProviderProtocol.OpenAIChatCompletion,
                     "官方",
                     "https://api.openai.com/v1",
                     "sk-test",
-                    new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+                    new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
                     [(modelId, 10, "gpt-4o-2024-11-20")]),
             ]);
             dbContext.Add(provider);
@@ -292,7 +292,7 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             Assert.Equal(tenantId, removedMapping.TenantId);
             Assert.Equal(providerId, removedEndpoint.ModelProviderId);
             Assert.Equal(removedEndpointId, removedMapping.ModelProviderEndpointId);
-            var setting = Assert.IsType<OpenAIModelProviderEndpointSetting>(removedEndpoint.Setting);
+            var setting = Assert.IsType<OpenAIChatCompletionModelProviderEndpointSetting>(removedEndpoint.Setting);
             Assert.Equal("org-1", setting.Organization);
 
             // 既有聚合根同步子实体：已有的保留、Id 为 0 的新增，同样自动拿到 Id
@@ -300,11 +300,11 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             [
                 new ModelProvider.EndpointInput(
                     removedEndpointId,
-                    ModelProviderProtocol.OpenAI,
+                    ModelProviderProtocol.OpenAIChatCompletion,
                     "官方",
                     "https://api.openai.com/v1",
                     "sk-test",
-                    new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+                    new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
                     [(modelId, 10, "gpt-4o-2024-11-20")]),
                 new ModelProvider.EndpointInput(
                     0,
@@ -327,11 +327,11 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
             [
                 new ModelProvider.EndpointInput(
                     removedEndpointId,
-                    ModelProviderProtocol.OpenAI,
+                    ModelProviderProtocol.OpenAIChatCompletion,
                     "官方",
                     "https://vip.api.openai.com/v1",
                     "sk-new",
-                    new OpenAIModelProviderEndpointSetting(),
+                    new OpenAIChatCompletionModelProviderEndpointSetting(),
                     []),
                 new ModelProvider.EndpointInput(
                     keptEndpointId,

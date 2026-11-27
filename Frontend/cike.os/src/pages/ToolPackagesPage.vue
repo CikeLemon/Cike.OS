@@ -16,7 +16,7 @@ import ToolPackageFormDialog from '@/components/tool-packages/ToolPackageFormDia
 import ToolPackageIcon from '@/components/tool-packages/ToolPackageIcon.vue'
 import ToolPackageStatusBadge from '@/components/tool-packages/ToolPackageStatusBadge.vue'
 import { getErrorMessage } from '@/lib/errors'
-import { truncate } from '@/lib/format'
+import { formatDateTime, truncate } from '@/lib/format'
 import { TOOL_PACKAGE_STATUS_OPTIONS } from '@/lib/tool-status'
 
 const ALL = 'all'
@@ -61,7 +61,7 @@ async function load() {
         Status: statusFilter.value === ALL ? undefined : (Number(statusFilter.value) as ToolPackageStatus),
         Page: page.value,
         PageSize: PAGE_SIZE,
-        Sorting: 'CreatedAt desc',
+        Sorting: 'UpdatedAt desc',
       },
     })
     if (result.error) {
@@ -182,16 +182,18 @@ onMounted(() => {
             <TableHead class="w-32">分类</TableHead>
             <TableHead class="w-24">状态</TableHead>
             <TableHead>描述</TableHead>
+            <TableHead class="w-44">创建时间</TableHead>
+            <TableHead class="w-44">更新时间</TableHead>
             <TableHead class="w-28 text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <template v-if="loading">
             <TableRow v-for="i in 5" :key="i">
-              <TableCell colspan="6"><Skeleton class="h-5 w-1/2" /></TableCell>
+              <TableCell colspan="8"><Skeleton class="h-5 w-1/2" /></TableCell>
             </TableRow>
           </template>
-          <TableEmpty v-else-if="items.length === 0" :colspan="6">
+          <TableEmpty v-else-if="items.length === 0" :colspan="8">
             {{ hasFilters ? '没有符合条件的工具包。' : '尚无工具包，点击右上角新建。' }}
           </TableEmpty>
           <TableRow v-for="toolPackage in items" v-else :key="toolPackage.id" class="cursor-pointer" @click="router.push({ name: 'tool-package-detail', params: { id: toolPackage.id } })">
@@ -205,6 +207,8 @@ onMounted(() => {
             <TableCell>{{ toolPackage.toolPackageCategoryName || '—' }}</TableCell>
             <TableCell><ToolPackageStatusBadge :status="toolPackage.status" /></TableCell>
             <TableCell class="text-muted-foreground max-w-xs truncate">{{ truncate(toolPackage.description, 60) }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDateTime(toolPackage.createdAt) }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDateTime(toolPackage.updatedAt) }}</TableCell>
             <TableCell class="text-right" @click.stop>
               <div class="flex justify-end gap-1">
                 <Button size="icon-sm" variant="ghost" aria-label="编辑" @click="openEdit(toolPackage)">

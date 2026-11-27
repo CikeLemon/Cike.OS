@@ -95,6 +95,9 @@ if (error) toast.error(getErrorMessage(error))
 - **基础组件靠 CLI 生成**：`src/components/ui/` 下的组件一律用 `pnpm dlx shadcn-vue@latest add <component>` 引入（见下节），禁止从零手写基础组件；CLI 的 style / baseColor / 路径别名以 `components.json` 为准。
 - **`ui/` 与业务组件分层**：业务组件放 `src/components/`（`ui/` 之外），文件名 PascalCase 且与组件名一致；对 `ui/` 组件的定制若被多处复用，封装成业务包装组件，不在 `ui/` 生成物上反复打补丁。
 - **组件命名模式**：表单类独立成 `*Form.vue`，对话框类独立成 `*Dialog.vue` / `*Modal.vue`（确认框用 shadcn-vue 的 `AlertDialog`），不内联在页面或其它组件里。
+- **列表页的排序与时间列**：
+  - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排（如接入点里选模型传 `DisplayName asc`）。
+  - 实体列表页（模型、工具包、标签、模型提供方、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方详情里的接入点、工具包详情里的工具）不加——它们随父级整体保存，时间戳没有独立意义。
 - **图标只用 `@lucide/vue`**：本项目依赖的是 `@lucide/vue`，禁止引入 `lucide-vue-next` 或其它图标库（两者包名 / API 不同，混用会重复打包）。
 
 ## 配色约束（zinc 中性色板）

@@ -1,17 +1,17 @@
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.Contracts.Models.Dtos;
+using Cike.OS.Application.Contracts.Tags.Dtos;
 using Cike.OS.Application.Contracts.ToolPackageCategories.Dtos;
 using Cike.OS.Application.Contracts.ToolPackages.Dtos;
 using Cike.OS.Application.Contracts.Tools.Dtos;
 using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Application.Models.Commands;
+using Cike.OS.Application.Tags.Commands;
 using Cike.OS.Application.ToolPackageCategories.Commands;
 using Cike.OS.Application.ToolPackages.Commands;
 using Cike.OS.Application.Tools.Commands;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
-using Cike.OS.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Cike.OS.Tests.Infrastructure;
 
@@ -70,13 +70,14 @@ public static class TestDataFactory
     public static ModelProviderEndpointSetting CreateEndpointSetting(ModelProviderProtocol protocol) => protocol switch
     {
         ModelProviderProtocol.Anthropic => new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" },
-        _ => new OpenAIModelProviderEndpointSetting { Organization = "org-1" },
+        ModelProviderProtocol.OpenAIResponse => new OpenAIResponseModelProviderEndpointSetting { Organization = "org-1" },
+        _ => new OpenAIChatCompletionModelProviderEndpointSetting { Organization = "org-1" },
     };
 
     /// <summary>接入点的输入：Id 为 0 表示新建。</summary>
     public static SaveModelProviderEndpointDto Endpoint(
         string name = "官方",
-        ModelProviderProtocol protocol = ModelProviderProtocol.OpenAI,
+        ModelProviderProtocol protocol = ModelProviderProtocol.OpenAIChatCompletion,
         long id = 0,
         IReadOnlyList<SaveModelProviderMappingDto>? mappings = null,
         string baseUrl = "https://api.openai.com/v1",
@@ -127,14 +128,10 @@ public static class TestDataFactory
         ProviderModelName = providerModelName,
     };
 
-    /// <summary>标签暂无写侧用例（只读端点），测试直接走 DbContext 造数据。</summary>
-    public static async Task<long> CreateTagAsync(CikeOSTestHost host, string key, string name)
+    public static async Task<long> CreateTagAsync(CikeOSTestHost host, string key, string name = "测试标签")
     {
-        using var scope = host.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-        var tag = new Cike.OS.Domain.Entities.Tag { Key = key, Name = name };
-        dbContext.Add(tag);
-        await dbContext.SaveChangesAsync();
-        return tag.Id;
+        var command = new CreateTagCommand(new CreateTagDto { Key = key, Name = name });
+        await host.PublishAsync(command);
+        return command.Id;
     }
 }

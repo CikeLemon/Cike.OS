@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1ModelsByIdData, DeleteApiV1ModelsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1ModelsByIdData, GetApiV1ModelsByIdErrors, GetApiV1ModelsByIdResponses, GetApiV1ModelsPagedListData, GetApiV1ModelsPagedListResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetData, GetResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1ModelsData, PostApiV1ModelsResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdResponses, PutApiV1ModelsByIdData, PutApiV1ModelsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
+import type { DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1ModelsByIdData, DeleteApiV1ModelsByIdResponses, DeleteApiV1TagsByIdData, DeleteApiV1TagsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1ModelsByIdData, GetApiV1ModelsByIdErrors, GetApiV1ModelsByIdResponses, GetApiV1ModelsPagedListData, GetApiV1ModelsPagedListResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1TagsPagedListData, GetApiV1TagsPagedListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetData, GetResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1ModelsData, PostApiV1ModelsResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1TagsData, PostApiV1TagsResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdResponses, PutApiV1ModelsByIdData, PutApiV1ModelsByIdResponses, PutApiV1TagsByIdData, PutApiV1TagsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -115,6 +115,38 @@ export const getApiV1TagsList = <ThrowOnError extends boolean = false>(options?:
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/Tags/List',
     ...options
+});
+
+export const getApiV1TagsPagedList = <ThrowOnError extends boolean = false>(options: Options<GetApiV1TagsPagedListData, ThrowOnError>): RequestResult<GetApiV1TagsPagedListResponses, unknown, ThrowOnError> => (options.client ?? client).get<GetApiV1TagsPagedListResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Tags/PagedList',
+    ...options
+});
+
+export const postApiV1Tags = <ThrowOnError extends boolean = false>(options: Options<PostApiV1TagsData, ThrowOnError>): RequestResult<PostApiV1TagsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1TagsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Tags',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const deleteApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1TagsByIdData, ThrowOnError>): RequestResult<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Tags/{id}',
+    ...options
+});
+
+export const putApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<PutApiV1TagsByIdData, ThrowOnError>): RequestResult<PutApiV1TagsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).put<PutApiV1TagsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Tags/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 export const getApiV1ToolPackageCategoriesList = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ToolPackageCategoriesListData, ThrowOnError>): RequestResult<GetApiV1ToolPackageCategoriesListResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetApiV1ToolPackageCategoriesListResponses, unknown, ThrowOnError>({

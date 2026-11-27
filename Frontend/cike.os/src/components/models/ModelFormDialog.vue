@@ -10,12 +10,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { existingTagIds } from '@/components/models/model-form'
 import { getErrorMessage } from '@/lib/errors'
 
 const props = defineProps<{
   open: boolean
   /** 平台标签列表，供多选 */
   tags: TagDto[]
+  /** 标签列表是否已成功加载：未就绪时不过滤回填、也不允许保存（否则会把模型上的标签全部丢掉） */
+  tagsReady: boolean
   /** 传入为编辑，null 为新建；模型名称创建后不可变，编辑态禁用 */
   model?: ModelDto | null
 }>()
@@ -45,7 +48,8 @@ watch(
     form.name = model?.name ?? ''
     form.displayName = model?.displayName ?? ''
     form.description = model?.description ?? ''
-    form.tagIds = [...(model?.tagIds ?? [])]
+    // 标签删除不清理模型上的引用：只回填当前标签列表里能匹配到的，已删的不带进表单；标签列表没加载成功时原样保留
+    form.tagIds = props.tagsReady ? existingTagIds(model?.tagIds, props.tags) : [...(model?.tagIds ?? [])]
   },
 )
 
@@ -119,7 +123,7 @@ async function submit() {
         </div>
         <div class="grid gap-2">
           <Label>标签</Label>
-          <p v-if="tags.length === 0" class="text-muted-foreground text-sm">暂无可选标签。</p>
+          <p v-if="tags.length === 0" class="text-muted-foreground text-sm">{{ tagsReady ? '暂无可选标签。' : '标签列表加载失败，请刷新页面后再编辑。' }}</p>
           <div v-else class="flex flex-wrap gap-x-6 gap-y-2">
             <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
               <Checkbox :model-value="form.tagIds.includes(tag.id ?? '')" @update:model-value="toggleTag(tag.id ?? '', Boolean($event))" />
@@ -129,7 +133,7 @@ async function submit() {
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" :disabled="saving" @click="emit('update:open', false)">取消</Button>
-          <Button type="submit" :disabled="saving">
+          <Button type="submit" :disabled="saving || !tagsReady">
             <LoaderCircle v-if="saving" class="animate-spin" />
             保存
           </Button>

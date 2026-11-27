@@ -1,13 +1,12 @@
+using Cike.Contracts.EntityDtos;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 
 namespace Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
 /// <summary>接入点的输出：随 <see cref="ModelProviderDto"/> 一起带出，没有独立的查询接口。</summary>
-public class ModelProviderEndpointDto
+public class ModelProviderEndpointDto : AuditedEntityDto<long>
 {
-    public long Id { get; set; }
-
     public string Name { get; set; } = null!;
 
     public ModelProviderProtocol Protocol { get; set; }

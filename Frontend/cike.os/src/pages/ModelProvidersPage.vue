@@ -96,6 +96,7 @@ onMounted(load)
             <TableHead class="w-56">协议</TableHead>
             <TableHead class="min-w-64">支持的模型</TableHead>
             <TableHead class="w-24">接入点</TableHead>
+            <TableHead class="w-44">创建时间</TableHead>
             <TableHead class="w-44">更新时间</TableHead>
             <TableHead class="w-20 text-right">操作</TableHead>
           </TableRow>
@@ -103,10 +104,10 @@ onMounted(load)
         <TableBody>
           <template v-if="loading">
             <TableRow v-for="i in 5" :key="i">
-              <TableCell colspan="6"><Skeleton class="h-5 w-1/2" /></TableCell>
+              <TableCell colspan="7"><Skeleton class="h-5 w-1/2" /></TableCell>
             </TableRow>
           </template>
-          <TableEmpty v-else-if="providers.length === 0" :colspan="6">尚无模型提供方，点击右上角新建。</TableEmpty>
+          <TableEmpty v-else-if="providers.length === 0" :colspan="7">尚无模型提供方，点击右上角新建。</TableEmpty>
           <TableRow v-for="provider in providers" v-else :key="provider.id">
             <TableCell class="font-medium">
               <button type="button" class="hover:underline" @click="openDetail(provider)">{{ provider.name }}</button>
@@ -126,6 +127,7 @@ onMounted(load)
               <span v-else class="text-muted-foreground">—</span>
             </TableCell>
             <TableCell class="text-muted-foreground">{{ provider.endpointCount ?? 0 }} 个</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDateTime(provider.createdAt) }}</TableCell>
             <TableCell class="text-muted-foreground">{{ formatDateTime(provider.updatedAt) }}</TableCell>
             <TableCell class="text-right">
               <Button size="icon-sm" variant="ghost" aria-label="删除" @click="deleting = provider">

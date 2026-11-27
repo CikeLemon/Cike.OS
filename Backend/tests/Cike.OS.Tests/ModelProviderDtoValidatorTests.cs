@@ -54,7 +54,7 @@ public class ModelProviderDtoValidatorTests
         var dto = new UpdateModelProviderDto
         {
             Name = "智谱",
-            Endpoints = [new SaveModelProviderEndpointDto { Name = "", Protocol = ModelProviderProtocol.OpenAI, BaseUrl = "https://x", ApiKey = "k", Setting = new OpenAIModelProviderEndpointSetting() }],
+            Endpoints = [new SaveModelProviderEndpointDto { Name = "", Protocol = ModelProviderProtocol.OpenAIChatCompletion, BaseUrl = "https://x", ApiKey = "k", Setting = new OpenAIChatCompletionModelProviderEndpointSetting() }],
         };
 
         new UpdateModelProviderDtoValidator().TestValidate(dto).ShouldHaveValidationErrorFor("Endpoints[0].Name");
@@ -69,11 +69,11 @@ public class SaveModelProviderEndpointDtoValidatorTests
     private static SaveModelProviderEndpointDto Valid() => new()
     {
         Name = "官方",
-        Protocol = ModelProviderProtocol.OpenAI,
+        Protocol = ModelProviderProtocol.OpenAIChatCompletion,
         BaseUrl = "https://api.openai.com/v1",
         ApiKey = "sk-test",
         // 协议专属字段不填也合法
-        Setting = new OpenAIModelProviderEndpointSetting(),
+        Setting = new OpenAIChatCompletionModelProviderEndpointSetting(),
     };
 
     [Fact]
@@ -145,6 +145,29 @@ public class SaveModelProviderEndpointDtoValidatorTests
         dto.Setting = new AnthropicModelProviderEndpointSetting { Version = "2023-06-01" };
 
         _validator.TestValidate(dto).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_OpenAIResponseWithItsSetting_HasNoErrors()
+    {
+        var dto = Valid();
+        dto.Protocol = ModelProviderProtocol.OpenAIResponse;
+        dto.Setting = new OpenAIResponseModelProviderEndpointSetting { Organization = "org-1" };
+
+        _validator.TestValidate(dto).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_OpenAIProtocolsHaveDistinctSettings_MismatchHasError()
+    {
+        // 两种 OpenAI 协议各自对应一个设置子类，互换即不匹配
+        var responseWithChatSetting = Valid();
+        responseWithChatSetting.Protocol = ModelProviderProtocol.OpenAIResponse;
+        _validator.TestValidate(responseWithChatSetting).ShouldHaveValidationErrorFor("Setting");
+
+        var chatWithResponseSetting = Valid();
+        chatWithResponseSetting.Setting = new OpenAIResponseModelProviderEndpointSetting();
+        _validator.TestValidate(chatWithResponseSetting).ShouldHaveValidationErrorFor("Setting");
     }
 
     [Fact]

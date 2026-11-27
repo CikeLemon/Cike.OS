@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { AnthropicModelProviderEndpointSetting, ModelProviderEndpointDto, OpenAiModelProviderEndpointSetting } from '@/api'
+import type {
+  AnthropicModelProviderEndpointSetting,
+  ModelProviderEndpointDto,
+  OpenAiChatCompletionModelProviderEndpointSetting,
+  OpenAiResponseModelProviderEndpointSetting,
+} from '@/api'
 import {
   emptyEndpointForm,
   emptyMappingRow,
@@ -31,6 +36,12 @@ describe('endpoint-form', () => {
     expect(body.id).toBe('9')
     expect(body.protocol).toBe(2)
     expect(body.setting).toEqual({ type: 2, version: null })
+  })
+
+  it('OpenAI Response 协议：判别键为 3，专属字段同样是组织标识', () => {
+    const body = endpointFormToSaveDto({ ...validOpenAi(), protocol: 3 })
+    expect(body.protocol).toBe(3)
+    expect(body.setting).toEqual({ type: 3, organization: 'org-1' })
   })
 
   it('映射转提交项：分数转数字，空白提供商侧模型名归 null（表示回落模型名称）', () => {
@@ -75,7 +86,7 @@ describe('endpoint-form', () => {
       protocol: 1,
       baseUrl: 'u',
       apiKey: 'k',
-      setting: { type: 1, organization: 'o' } satisfies OpenAiModelProviderEndpointSetting,
+      setting: { type: 1, organization: 'o' } satisfies OpenAiChatCompletionModelProviderEndpointSetting,
       mappings: [{ modelId: '7', priority: 30, providerModelName: 'zhipu/glm' }],
     }
     const toRows = (state: ReturnType<typeof endpointFormFromDto>) =>
@@ -106,6 +117,24 @@ describe('endpoint-form', () => {
       apiKey: 'k',
       organization: '',
       version: 'v',
+      mappings: [],
+    })
+
+    // OpenAI Response 接入点：组织标识回填到同一个输入框
+    const response: ModelProviderEndpointDto = {
+      name: 'R',
+      protocol: 3,
+      baseUrl: 'u',
+      apiKey: 'k',
+      setting: { type: 3, organization: 'org-r' } satisfies OpenAiResponseModelProviderEndpointSetting,
+    }
+    expect(endpointFormFromDto(response)).toEqual({
+      name: 'R',
+      protocol: 3,
+      baseUrl: 'u',
+      apiKey: 'k',
+      organization: 'org-r',
+      version: '',
       mappings: [],
     })
   })

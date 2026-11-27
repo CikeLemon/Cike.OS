@@ -13,13 +13,19 @@ import ModelFormDialog from '@/components/models/ModelFormDialog.vue'
 import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog.vue'
 import TablePagination from '@/components/shared/TablePagination.vue'
 import { getErrorMessage } from '@/lib/errors'
-import { truncate } from '@/lib/format'
+import { formatDateTime, truncate } from '@/lib/format'
 
 const PAGE_SIZE = 10
 
 // 标签只有 id 列表，名称从这里查表回显
 const tags = ref<TagDto[]>([])
+// 标签列表没加载成功时：编辑框不过滤回填、列表不渲染空徽章
+const tagsReady = ref(false)
 const tagNameById = computed(() => new Map(tags.value.map(tag => [tag.id ?? '', tag.name ?? ''])))
+/** 模型的标签名称：只渲染能查到名称的（后端已过滤掉已删标签，这里再挡住标签列表未就绪的情况） */
+function tagNames(model: ModelDto): string[] {
+  return (model.tagIds ?? []).map(tagId => tagNameById.value.get(tagId)).filter((name): name is string => Boolean(name))
+}
 const items = ref<ModelDto[]>([])
 const total = ref(0)
 const loading = ref(true)
@@ -41,6 +47,7 @@ async function loadTags() {
     return
   }
   tags.value = result.data ?? []
+  tagsReady.value = true
 }
 
 async function load() {
@@ -51,7 +58,7 @@ async function load() {
         Keyword: keyword.value || undefined,
         Page: page.value,
         PageSize: PAGE_SIZE,
-        Sorting: 'DisplayName asc',
+        Sorting: 'UpdatedAt desc',
       },
     })
     if (result.error) {
@@ -133,17 +140,19 @@ onMounted(() => {
           <TableRow>
             <TableHead class="w-64">模型</TableHead>
             <TableHead class="w-64">标签</TableHead>
-            <TableHead>描述</TableHead>
+            <TableHead class="max-w-md">描述</TableHead>
+            <TableHead class="w-44">创建时间</TableHead>
+            <TableHead class="w-44">更新时间</TableHead>
             <TableHead class="w-28 text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <template v-if="loading">
             <TableRow v-for="i in 5" :key="i">
-              <TableCell colspan="4"><Skeleton class="h-5 w-1/2" /></TableCell>
+              <TableCell colspan="6"><Skeleton class="h-5 w-1/2" /></TableCell>
             </TableRow>
           </template>
-          <TableEmpty v-else-if="items.length === 0" :colspan="4">
+          <TableEmpty v-else-if="items.length === 0" :colspan="6">
             {{ hasFilters ? '没有符合条件的模型。' : '模型目录为空，点击右上角新建。' }}
           </TableEmpty>
           <TableRow v-for="model in items" v-else :key="model.id">
@@ -153,13 +162,16 @@ onMounted(() => {
                 <code class="text-muted-foreground font-mono text-xs">{{ model.name }}</code>
               </div>
             </TableCell>
+            <!-- 后端列表已过滤掉已删标签的引用，这里只渲染能查到名称的 -->
             <TableCell>
               <div class="flex flex-wrap gap-1">
-                <Badge v-for="tagId in model.tagIds ?? []" :key="tagId" variant="secondary">{{ tagNameById.get(tagId) ?? '未知标签' }}</Badge>
-                <span v-if="(model.tagIds?.length ?? 0) === 0" class="text-muted-foreground">—</span>
+                <Badge v-for="name in tagNames(model)" :key="name" variant="secondary">{{ name }}</Badge>
+                <span v-if="tagNames(model).length === 0" class="text-muted-foreground">—</span>
               </div>
             </TableCell>
             <TableCell class="text-muted-foreground max-w-md truncate">{{ truncate(model.description, 80) }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDateTime(model.createdAt) }}</TableCell>
+            <TableCell class="text-muted-foreground">{{ formatDateTime(model.updatedAt) }}</TableCell>
             <TableCell class="text-right">
               <div class="flex justify-end gap-1">
                 <Button size="icon-sm" variant="ghost" aria-label="编辑" @click="openEdit(model)">
@@ -177,7 +189,7 @@ onMounted(() => {
 
     <TablePagination v-model:page="page" :page-size="PAGE_SIZE" :total="total" @update:page="load" />
 
-    <ModelFormDialog v-model:open="dialogOpen" :tags="tags" :model="editing" @saved="load" />
+    <ModelFormDialog v-model:open="dialogOpen" :tags="tags" :tags-ready="tagsReady" :model="editing" @saved="load" />
     <DeleteConfirmDialog
       :open="deleting !== null"
       title="删除模型"

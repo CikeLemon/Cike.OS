@@ -3,6 +3,7 @@ using Cike.Contracts.EntityDtos;
 using Cike.OS.Application.Contracts.Models.Dtos;
 using Cike.OS.Application.Models.Commands;
 using Cike.OS.Application.Models.Queries;
+using Cike.OS.Application.Tags.Commands;
 using Cike.OS.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -166,6 +167,30 @@ public class ModelTests : IClassFixture<CikeOSTestHost>
         var items = query.Result!.Items;
         Assert.All(items, x => Assert.Contains($"关键词甲{suffix}", x.DisplayName));
         Assert.Contains(items, x => x.Name == $"kw-a-{suffix}");
+    }
+
+    [Fact]
+    public async Task GetPagedList_FiltersOutDeletedTagReferences()
+    {
+        var goneTagId = await TestDataFactory.CreateTagAsync(_host, $"gone-{Guid.NewGuid():N}");
+        var keptTagId = await TestDataFactory.CreateTagAsync(_host, $"kept-{Guid.NewGuid():N}");
+        var suffix = Guid.NewGuid().ToString("N");
+        await TestDataFactory.CreateModelAsync(_host, $"dangling-{suffix}", $"悬空{suffix}", tagIds: [goneTagId, keptTagId]);
+
+        // 删除标签不清理模型上的引用
+        await _host.PublishAsync(new DeleteTagCommand(goneTagId));
+
+        var query = new GetModelPagedListQuery(new GetModelPagedListDto
+        {
+            Keyword = $"悬空{suffix}",
+            Page = 1,
+            PageSize = 10,
+        });
+        await _host.PublishAsync(query);
+
+        // 列表只返回仍然存在的标签引用
+        var model = Assert.Single(query.Result!.Items);
+        Assert.Equal([keptTagId], model.TagIds);
     }
 
     [Fact]

@@ -19,7 +19,7 @@ public class ModelProviderQueryHandler(
     IReadOnlyRepository<ModelEntity, long> modelRepository)
 {
     /// <summary>
-    /// 列表：界面只要名称 / 协议 / 支持的模型 / 接入点数 / 更新时间，所以不加载聚合——
+    /// 列表：界面只要名称 / 协议 / 支持的模型 / 接入点数 / 创建时间 / 更新时间，所以不加载聚合——
     /// 分四次投影查询，每次只取需要的列，全程不跟踪，再在内存里拼成每行。
     /// </summary>
     [LocalEventHandler]
@@ -33,7 +33,7 @@ public class ModelProviderQueryHandler(
         var providers = await providerRepository.ToListAsync(
             providerRepository.GetQueryable()
                 .OrderBy(x => x.Name)
-                .Select(x => new { x.Id, x.Name, x.UpdatedAt }),
+                .Select(x => new { x.Id, x.Name, x.CreatedAt, x.CreatedBy, x.UpdatedAt, x.UpdatedBy }),
             cancellationToken);
         var providerIds = providers.Select(x => x.Id).ToList();
 
@@ -65,6 +65,10 @@ public class ModelProviderQueryHandler(
             return new ModelProviderListDto
             {
                 Id = provider.Id,
+                CreatedAt = provider.CreatedAt,
+                CreatedBy = provider.CreatedBy,
+                UpdatedAt = provider.UpdatedAt,
+                UpdatedBy = provider.UpdatedBy,
                 Name = provider.Name,
                 Protocols = ownEndpoints.Select(x => x.Protocol).Distinct().OrderBy(x => (int)x).ToList(),
                 // 分数高的排前面；同一个模型挂在多个接入点下时只出现一次
@@ -76,7 +80,6 @@ public class ModelProviderQueryHandler(
                     .Distinct()
                     .ToList(),
                 EndpointCount = ownEndpoints.Count,
-                UpdatedAt = provider.UpdatedAt,
             };
         }).ToList();
     }
