@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { TagDto } from '@/api'
-import { deleteApiV1TagsById, getApiV1TagsPagedList } from '@/api'
+import type { TagDetailDto, TagItemDto } from '@/api'
+import { deleteApiV1TagsById, getApiV1TagsById, getApiV1TagsPagedList } from '@/api'
 import { Pencil, Plus, Search, Trash } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
@@ -16,7 +16,7 @@ import { formatDateTime } from '@/lib/format'
 
 const PAGE_SIZE = 10
 
-const items = ref<TagDto[]>([])
+const items = ref<TagItemDto[]>([])
 const total = ref(0)
 const loading = ref(true)
 
@@ -26,11 +26,12 @@ const keyword = ref('')
 const page = ref(1)
 
 const dialogOpen = ref(false)
-const editing = ref<TagDto | null>(null)
-const deleting = ref<TagDto | null>(null)
+const editing = ref<TagDetailDto | null>(null)
+const deleting = ref<TagItemDto | null>(null)
 // 关闭动画期间 deleting 已清空，文案里的名称单独留一份，避免闪成空串
 const deletingName = ref('')
 const deleteBusy = ref(false)
+const detailBusy = ref(false)
 
 async function load() {
   loading.value = true
@@ -65,12 +66,24 @@ function openCreate() {
   dialogOpen.value = true
 }
 
-function openEdit(tag: TagDto) {
-  editing.value = tag
-  dialogOpen.value = true
+/** 编辑前先按 Id 取详情回填表单，不拿列表行；失败 toast 且不打开 */
+async function openEdit(tag: TagItemDto) {
+  if (!tag.id || detailBusy.value) return
+  detailBusy.value = true
+  try {
+    const result = await getApiV1TagsById({ path: { id: tag.id } })
+    if (result.error) {
+      toast.error(getErrorMessage(result))
+      return
+    }
+    editing.value = result.data ?? null
+    dialogOpen.value = true
+  } finally {
+    detailBusy.value = false
+  }
 }
 
-function openDelete(tag: TagDto) {
+function openDelete(tag: TagItemDto) {
   deleting.value = tag
   deletingName.value = tag.name ?? ''
 }
@@ -145,7 +158,7 @@ onMounted(load)
             <TableCell class="text-muted-foreground">{{ formatDateTime(tag.updatedAt) }}</TableCell>
             <TableCell class="text-right">
               <div class="flex justify-end gap-1">
-                <Button size="icon-sm" variant="ghost" aria-label="编辑" @click="openEdit(tag)">
+                <Button size="icon-sm" variant="ghost" aria-label="编辑" :disabled="detailBusy" @click="openEdit(tag)">
                   <Pencil />
                 </Button>
                 <Button size="icon-sm" variant="ghost" aria-label="删除" @click="openDelete(tag)">

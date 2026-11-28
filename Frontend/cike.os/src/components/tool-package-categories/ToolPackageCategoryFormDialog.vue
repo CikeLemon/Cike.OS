@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolPackageCategoryDto } from '@/api'
+import type { ToolPackageCategoryDetailDto } from '@/api'
 import { postApiV1ToolPackageCategories, putApiV1ToolPackageCategoriesById } from '@/api'
 import { LoaderCircle } from '@lucide/vue'
 import { ref, watch } from 'vue'
@@ -13,7 +13,7 @@ import { getErrorMessage } from '@/lib/errors'
 const props = defineProps<{
   open: boolean
   /** 传入为编辑，null 为新建 */
-  category?: ToolPackageCategoryDto | null
+  category?: ToolPackageCategoryDetailDto | null
 }>()
 
 const emit = defineEmits<{

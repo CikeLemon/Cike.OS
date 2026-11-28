@@ -3,4 +3,4 @@ using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 
 namespace Cike.OS.Application.ModelProviders.Queries;
 
-public record GetModelProviderListQuery : Query<List<ModelProviderListDto>>;
+public record GetModelProviderListQuery : Query<List<ModelProviderItemDto>>;

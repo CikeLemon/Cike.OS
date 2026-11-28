@@ -4,6 +4,7 @@ using Cike.MultiTenancy;
 using Cike.OS.Application.SkillPackages;
 using Cike.OS.Application.Tools.Commands;
 using Cike.OS.Domain.Entities;
+using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging;
 
@@ -66,7 +67,8 @@ public class ToolCommandHandler(
     {
         var tool = await toolRepository.GetAsync(command.Id, cancellationToken);
 
-        var agentToolCount = await agentToolRepository.GetCountAsync(x => x.ToolId == tool.Id, cancellationToken);
+        // 只看单个工具的绑定行；整包绑定不计（包里少一个工具只是不生效，不需要守护）
+        var agentToolCount = await agentToolRepository.GetCountAsync(x => x.Type == AgentToolType.Tool && x.TargetId == tool.Id, cancellationToken);
         if (agentToolCount > 0)
         {
             throw new UserFriendlyException("该工具已被 Agent 绑定引用，请先解除绑定后再删除。");

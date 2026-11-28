@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1TagsByIdData, DeleteApiV1TagsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1TagsPagedListData, GetApiV1TagsPagedListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetData, GetResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1TagsData, PostApiV1TagsResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdResponses, PutApiV1TagsByIdData, PutApiV1TagsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
+import type { DeleteApiV1AgentsByIdData, DeleteApiV1AgentsByIdResponses, DeleteApiV1ModelProvidersByIdData, DeleteApiV1ModelProvidersByIdResponses, DeleteApiV1TagsByIdData, DeleteApiV1TagsByIdResponses, DeleteApiV1ToolPackageCategoriesByIdData, DeleteApiV1ToolPackageCategoriesByIdResponses, DeleteApiV1ToolPackagesByIdData, DeleteApiV1ToolPackagesByIdResponses, DeleteApiV1ToolsByIdData, DeleteApiV1ToolsByIdResponses, DeleteApiV1UserToolConfigurationsByIdData, DeleteApiV1UserToolConfigurationsByIdResponses, GetApiV1AgentsByIdData, GetApiV1AgentsByIdErrors, GetApiV1AgentsByIdResponses, GetApiV1AgentsPagedListData, GetApiV1AgentsPagedListResponses, GetApiV1AgentsToolOptionsData, GetApiV1AgentsToolOptionsResponses, GetApiV1ModelProvidersByIdData, GetApiV1ModelProvidersByIdErrors, GetApiV1ModelProvidersByIdResponses, GetApiV1ModelProvidersListData, GetApiV1ModelProvidersListResponses, GetApiV1TagsByIdData, GetApiV1TagsByIdErrors, GetApiV1TagsByIdResponses, GetApiV1TagsListData, GetApiV1TagsListResponses, GetApiV1TagsPagedListData, GetApiV1TagsPagedListResponses, GetApiV1ToolPackageCategoriesByIdData, GetApiV1ToolPackageCategoriesByIdErrors, GetApiV1ToolPackageCategoriesByIdResponses, GetApiV1ToolPackageCategoriesListData, GetApiV1ToolPackageCategoriesListResponses, GetApiV1ToolPackagesByIdData, GetApiV1ToolPackagesByIdErrors, GetApiV1ToolPackagesByIdResponses, GetApiV1ToolPackagesPagedListData, GetApiV1ToolPackagesPagedListResponses, GetApiV1ToolsByIdData, GetApiV1ToolsByIdErrors, GetApiV1ToolsByIdResponses, GetApiV1ToolsListData, GetApiV1ToolsListResponses, GetApiV1UserToolConfigurationsByIdData, GetApiV1UserToolConfigurationsByIdErrors, GetApiV1UserToolConfigurationsByIdResponses, GetApiV1UserToolConfigurationsPagedListData, GetApiV1UserToolConfigurationsPagedListResponses, GetApiV1UserToolConfigurationsToolOptionsData, GetApiV1UserToolConfigurationsToolOptionsResponses, GetData, GetResponses, PostApiV1AgentsData, PostApiV1AgentsResponses, PostApiV1ModelProvidersData, PostApiV1ModelProvidersResponses, PostApiV1SkillPackagesUploadData, PostApiV1SkillPackagesUploadResponses, PostApiV1TagsData, PostApiV1TagsResponses, PostApiV1ToolPackageCategoriesData, PostApiV1ToolPackageCategoriesResponses, PostApiV1ToolPackagesData, PostApiV1ToolPackagesResponses, PostApiV1ToolsData, PostApiV1ToolsResponses, PostApiV1UserToolConfigurationsSaveBatchData, PostApiV1UserToolConfigurationsSaveBatchResponses, PostApiV1UserToolConfigurationsSaveData, PostApiV1UserToolConfigurationsSaveResponses, PutApiV1AgentsByIdData, PutApiV1AgentsByIdResponses, PutApiV1ModelProvidersByIdData, PutApiV1ModelProvidersByIdResponses, PutApiV1TagsByIdData, PutApiV1TagsByIdResponses, PutApiV1ToolPackageCategoriesByIdData, PutApiV1ToolPackageCategoriesByIdResponses, PutApiV1ToolPackagesByIdData, PutApiV1ToolPackagesByIdResponses, PutApiV1ToolsByIdData, PutApiV1ToolsByIdResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,50 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+export const getApiV1AgentsPagedList = <ThrowOnError extends boolean = false>(options: Options<GetApiV1AgentsPagedListData, ThrowOnError>): RequestResult<GetApiV1AgentsPagedListResponses, unknown, ThrowOnError> => (options.client ?? client).get<GetApiV1AgentsPagedListResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents/PagedList',
+    ...options
+});
+
+export const getApiV1AgentsToolOptions = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1AgentsToolOptionsData, ThrowOnError>): RequestResult<GetApiV1AgentsToolOptionsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetApiV1AgentsToolOptionsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents/ToolOptions',
+    ...options
+});
+
+export const deleteApiV1AgentsById = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1AgentsByIdData, ThrowOnError>): RequestResult<DeleteApiV1AgentsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1AgentsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents/{id}',
+    ...options
+});
+
+export const getApiV1AgentsById = <ThrowOnError extends boolean = false>(options: Options<GetApiV1AgentsByIdData, ThrowOnError>): RequestResult<GetApiV1AgentsByIdResponses, GetApiV1AgentsByIdErrors, ThrowOnError> => (options.client ?? client).get<GetApiV1AgentsByIdResponses, GetApiV1AgentsByIdErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents/{id}',
+    ...options
+});
+
+export const putApiV1AgentsById = <ThrowOnError extends boolean = false>(options: Options<PutApiV1AgentsByIdData, ThrowOnError>): RequestResult<PutApiV1AgentsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).put<PutApiV1AgentsByIdResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const postApiV1Agents = <ThrowOnError extends boolean = false>(options: Options<PostApiV1AgentsData, ThrowOnError>): RequestResult<PostApiV1AgentsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1AgentsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Agents',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 export const get = <ThrowOnError extends boolean = false>(options?: Options<GetData, ThrowOnError>): RequestResult<GetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -85,17 +129,13 @@ export const getApiV1TagsPagedList = <ThrowOnError extends boolean = false>(opti
     ...options
 });
 
-export const postApiV1Tags = <ThrowOnError extends boolean = false>(options: Options<PostApiV1TagsData, ThrowOnError>): RequestResult<PostApiV1TagsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1TagsResponses, unknown, ThrowOnError>({
+export const deleteApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1TagsByIdData, ThrowOnError>): RequestResult<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/api/v1/Tags',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
+    url: '/api/v1/Tags/{id}',
+    ...options
 });
 
-export const deleteApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<DeleteApiV1TagsByIdData, ThrowOnError>): RequestResult<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).delete<DeleteApiV1TagsByIdResponses, unknown, ThrowOnError>({
+export const getApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<GetApiV1TagsByIdData, ThrowOnError>): RequestResult<GetApiV1TagsByIdResponses, GetApiV1TagsByIdErrors, ThrowOnError> => (options.client ?? client).get<GetApiV1TagsByIdResponses, GetApiV1TagsByIdErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/Tags/{id}',
     ...options
@@ -104,6 +144,16 @@ export const deleteApiV1TagsById = <ThrowOnError extends boolean = false>(option
 export const putApiV1TagsById = <ThrowOnError extends boolean = false>(options: Options<PutApiV1TagsByIdData, ThrowOnError>): RequestResult<PutApiV1TagsByIdResponses, unknown, ThrowOnError> => (options.client ?? client).put<PutApiV1TagsByIdResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/Tags/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const postApiV1Tags = <ThrowOnError extends boolean = false>(options: Options<PostApiV1TagsData, ThrowOnError>): RequestResult<PostApiV1TagsResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1TagsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/Tags',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -237,9 +287,31 @@ export const getApiV1UserToolConfigurationsById = <ThrowOnError extends boolean 
     ...options
 });
 
+export const getApiV1UserToolConfigurationsPagedList = <ThrowOnError extends boolean = false>(options: Options<GetApiV1UserToolConfigurationsPagedListData, ThrowOnError>): RequestResult<GetApiV1UserToolConfigurationsPagedListResponses, unknown, ThrowOnError> => (options.client ?? client).get<GetApiV1UserToolConfigurationsPagedListResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/UserToolConfigurations/PagedList',
+    ...options
+});
+
+export const getApiV1UserToolConfigurationsToolOptions = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1UserToolConfigurationsToolOptionsData, ThrowOnError>): RequestResult<GetApiV1UserToolConfigurationsToolOptionsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetApiV1UserToolConfigurationsToolOptionsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/UserToolConfigurations/ToolOptions',
+    ...options
+});
+
 export const postApiV1UserToolConfigurationsSave = <ThrowOnError extends boolean = false>(options: Options<PostApiV1UserToolConfigurationsSaveData, ThrowOnError>): RequestResult<PostApiV1UserToolConfigurationsSaveResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1UserToolConfigurationsSaveResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/UserToolConfigurations/Save',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const postApiV1UserToolConfigurationsSaveBatch = <ThrowOnError extends boolean = false>(options: Options<PostApiV1UserToolConfigurationsSaveBatchData, ThrowOnError>): RequestResult<PostApiV1UserToolConfigurationsSaveBatchResponses, unknown, ThrowOnError> => (options.client ?? client).post<PostApiV1UserToolConfigurationsSaveBatchResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/UserToolConfigurations/SaveBatch',
     ...options,
     headers: {
         'Content-Type': 'application/json',

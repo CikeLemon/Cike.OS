@@ -43,14 +43,14 @@ public class TagTests : IClassFixture<CikeOSTestHost>
         new(keyword, new PagedAndSortedResultRequest { Page = 1, PageSize = 10 });
 
     /// <summary>按键查分页列表：键在未删除的标签里唯一，命中即单条。</summary>
-    private async Task<TagDto> GetByKeyAsync(string key)
+    private async Task<TagItemDto> GetByKeyAsync(string key)
     {
         var query = PagedQuery(key);
         await _host.PublishAsync(query);
         return Assert.Single(query.Result!.Items);
     }
 
-    private async Task<List<TagDto>> GetListAsync()
+    private async Task<List<TagItemDto>> GetListAsync()
     {
         var query = new GetTagListQuery();
         await _host.PublishAsync(query);
@@ -147,7 +147,7 @@ public class TagTests : IClassFixture<CikeOSTestHost>
         // 没有引用守护：直接删成功
         await _host.PublishAsync(new DeleteTagCommand(tagId));
 
-        var query = new GetModelProviderQuery(command.Id);
+        var query = new GetModelProviderDetailQuery(command.Id);
         await _host.PublishAsync(query);
         // 模型数据不被动，引用仍留在聚合上（界面回填时才被过滤）
         Assert.Equal([tagId], Assert.Single(query.Result!.Models).TagIds);

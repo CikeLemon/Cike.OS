@@ -96,70 +96,9 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                     b.Property<long>("Id")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("AgentToolPackageId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("CreatedAt")
-                        .HasComment("CreatedAt");
-
-                    b.Property<long>("CreatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("CreatedBy")
-                        .HasComment("CreatedBy");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("IsDeleted");
-
-                    b.Property<long>("TenantId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("TenantId");
-
-                    b.Property<long>("ToolId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<long>("UpdatedBy")
-                        .HasColumnType("bigint")
-                        .HasColumnName("UpdatedBy")
-                        .HasComment("UpdatedBy");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AgentToolPackageId");
-
-                    b.HasIndex("CreatedBy");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("ToolId");
-
-                    b.HasIndex("UpdatedBy");
-
-                    b.ToTable("AgentTools");
-                });
-
-            modelBuilder.Entity("Cike.OS.Domain.Entities.AgentToolPackage", b =>
-                {
-                    b.Property<long>("Id")
-                        .HasColumnType("bigint");
-
                     b.Property<long>("AgentId")
                         .HasColumnType("bigint");
 
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)")
-                        .HasColumnName("ConcurrencyStamp");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("CreatedAt")
@@ -174,15 +113,15 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("IsDeleted");
 
-                    b.Property<bool>("IsFull")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<long>("TargetId")
+                        .HasColumnType("bigint");
 
                     b.Property<long>("TenantId")
                         .HasColumnType("bigint")
                         .HasColumnName("TenantId");
 
-                    b.Property<long>("ToolPackageId")
-                        .HasColumnType("bigint");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
@@ -200,13 +139,13 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
 
                     b.HasIndex("IsDeleted");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TargetId");
 
-                    b.HasIndex("ToolPackageId");
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("UpdatedBy");
 
-                    b.ToTable("AgentToolPackages");
+                    b.ToTable("AgentTools");
                 });
 
             modelBuilder.Entity("Cike.OS.Domain.Entities.Conversation", b =>
@@ -1034,9 +973,9 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("Cike.OS.Domain.Entities.AgentTool", b =>
                 {
-                    b.HasOne("Cike.OS.Domain.Entities.AgentToolPackage", null)
-                        .WithMany("AgentTools")
-                        .HasForeignKey("AgentToolPackageId")
+                    b.HasOne("Cike.OS.Domain.Entities.AgentEntity", null)
+                        .WithMany("Tools")
+                        .HasForeignKey("AgentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1050,9 +989,9 @@ namespace Cike.OS.EntityFrameworkCore.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Cike.OS.Domain.Entities.AgentToolPackage", b =>
+            modelBuilder.Entity("Cike.OS.Domain.Entities.AgentEntity", b =>
                 {
-                    b.Navigation("AgentTools");
+                    b.Navigation("Tools");
                 });
 
             modelBuilder.Entity("Cike.OS.Domain.Entities.ModelProvider", b =>

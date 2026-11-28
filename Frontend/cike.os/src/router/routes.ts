@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { Bot, FolderOpen, MessageSquare, Package, Server, Settings, Tag } from '@lucide/vue'
+import { Bot, FolderOpen, MessageSquare, Package, Server, Settings, SlidersHorizontal, Tag } from '@lucide/vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -49,6 +49,11 @@ const pageRoutes: RouteRecordRaw[] = [
     path: '/tool-package-categories',
     component: () => import('@/pages/ToolPackageCategoriesPage.vue'),
     meta: { title: '工具包分类', nav: true, icon: FolderOpen },
+  },
+  {
+    path: '/tool-configurations',
+    component: () => import('@/pages/ToolConfigurationsPage.vue'),
+    meta: { title: '工具参数', nav: true, icon: SlidersHorizontal },
   },
   {
     path: '/tags',

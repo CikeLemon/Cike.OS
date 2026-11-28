@@ -27,7 +27,7 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
         var categoryId = await CreateCategoryAsync();
         var packageId = await TestDataFactory.CreatePackageAsync(_host, categoryId, name: "搜索工具包");
 
-        var query = new GetToolPackageQuery(packageId);
+        var query = new GetToolPackageDetailQuery(packageId);
         await _host.PublishAsync(query);
 
         Assert.Equal("搜索工具包", query.Result!.Name);
@@ -84,7 +84,7 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
             Status = ToolPackageStatus.Published,
         }));
 
-        var query = new GetToolPackageQuery(packageId);
+        var query = new GetToolPackageDetailQuery(packageId);
         await _host.PublishAsync(query);
 
         Assert.Equal("改名后", query.Result!.Name);
@@ -110,7 +110,7 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
         await TestDataFactory.CreatePackageAsync(_host, categoryId, name: $"搜索-{marker}-乙", status: ToolPackageStatus.Offline);
         await TestDataFactory.CreatePackageAsync(_host, categoryId, name: $"无关-{marker}", status: ToolPackageStatus.Published);
 
-        var query = new GetToolPackagePagedListQuery(new GetToolPackagePagedListDto
+        var query = new GetToolPackagePagedListQuery(new GetToolPackagePagedListRequestDto
         {
             Keyword = marker,
             ToolPackageCategoryId = categoryId,
@@ -138,7 +138,7 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
             await TestDataFactory.CreatePackageAsync(_host, categoryId, name: $"分页-{marker}-{i}");
         }
 
-        var query = new GetToolPackagePagedListQuery(new GetToolPackagePagedListDto
+        var query = new GetToolPackagePagedListQuery(new GetToolPackagePagedListRequestDto
         {
             Keyword = marker,
             Page = 2,
@@ -169,7 +169,7 @@ public class ToolPackageTests : IClassFixture<CikeOSTestHost>
 
         await _host.PublishAsync(new DeleteToolPackageCommand(packageId));
 
-        var query = new GetToolPackageQuery(packageId);
+        var query = new GetToolPackageDetailQuery(packageId);
         await _host.PublishAsync(query);
         Assert.Null(query.Result);
     }

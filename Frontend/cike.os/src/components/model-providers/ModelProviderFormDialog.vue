@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ModelProviderDto, TagDto } from '@/api'
+import type { ModelProviderDetailDto, TagItemDto } from '@/api'
 import { postApiV1ModelProviders, putApiV1ModelProvidersById } from '@/api'
 import { LoaderCircle, Pencil, Plus, Trash } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -42,11 +42,11 @@ import { PROTOCOL_OPTIONS, isOpenAiProtocol, type ProtocolValue } from '@/lib/mo
 const props = defineProps<{
   open: boolean
   /** 平台标签列表，供模型的标签多选 */
-  tags: TagDto[]
+  tags: TagItemDto[]
   /** 标签列表是否已成功加载：未就绪时不过滤回填、也不允许保存（否则会把模型上的标签全部丢掉） */
   tagsReady: boolean
   /** 传入为编辑（列表页先按 Id 取到的详情），null 为新建 */
-  provider?: ModelProviderDto | null
+  provider?: ModelProviderDetailDto | null
 }>()
 
 const emit = defineEmits<{

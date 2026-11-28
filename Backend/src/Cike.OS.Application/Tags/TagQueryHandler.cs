@@ -19,7 +19,17 @@ public class TagQueryHandler(IReadOnlyRepository<Tag, long> tagRepository)
         var tags = await tagRepository.ToListAsync(
             tagRepository.GetQueryable().OrderBy(x => x.Key),
             cancellationToken);
-        query.Result = tags.Adapt<List<TagDto>>();
+        query.Result = tags.Adapt<List<TagItemDto>>();
+    }
+
+    /// <summary>详情：编辑表单回填用。</summary>
+    [LocalEventHandler]
+    public async Task GetDetailAsync(GetTagDetailQuery query, CancellationToken cancellationToken = default)
+    {
+        using var _ = tagRepository.BeginAsNoTracking();
+
+        var tag = await tagRepository.FindAsync(query.Id, cancellationToken);
+        query.Result = tag?.Adapt<TagDetailDto>();
     }
 
     [LocalEventHandler]
@@ -35,6 +45,6 @@ public class TagQueryHandler(IReadOnlyRepository<Tag, long> tagRepository)
 
         // Paging 从端点 [AsParameters] 绑定后一路透传：Sorting 由前端传入（Dynamic LINQ 字符串，支持多字段）
         var (total, tags) = await tagRepository.GetPagedListAsync(query.Paging, predicate, cancellationToken);
-        query.Result = new PagedResultDto<TagDto>(total, tags.Adapt<List<TagDto>>());
+        query.Result = new PagedResultDto<TagItemDto>(total, tags.Adapt<List<TagItemDto>>());
     }
 }

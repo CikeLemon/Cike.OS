@@ -48,18 +48,19 @@ public class ToolPackageQueryHandler(
         var categories = await categoryRepository.GetListAsync(x => categoryIds.Contains(x.Id), "Id asc", cancellationToken);
         var categoryNames = categories.ToDictionary(x => x.Id, x => x.Name);
 
-        var items = packages.Adapt<List<ToolPackageDto>>();
-        foreach (var item in items)
+        // 列表行不带分类 Id，分类名称按取回的实体顺序一一对应回填
+        var items = packages.Adapt<List<ToolPackageItemDto>>();
+        foreach (var (item, package) in items.Zip(packages))
         {
-            categoryNames.TryGetValue(item.ToolPackageCategoryId, out var name);
+            categoryNames.TryGetValue(package.ToolPackageCategoryId, out var name);
             item.ToolPackageCategoryName = name ?? string.Empty;
         }
 
-        query.Result = new PagedResultDto<ToolPackageDto>(total, items);
+        query.Result = new PagedResultDto<ToolPackageItemDto>(total, items);
     }
 
     [LocalEventHandler]
-    public async Task GetAsync(GetToolPackageQuery query, CancellationToken cancellationToken = default)
+    public async Task GetAsync(GetToolPackageDetailQuery query, CancellationToken cancellationToken = default)
     {
         using var _ = toolPackageRepository.BeginAsNoTracking();
 
@@ -71,7 +72,7 @@ public class ToolPackageQueryHandler(
         }
 
         var category = await categoryRepository.FindAsync(package.ToolPackageCategoryId, cancellationToken);
-        var dto = package.Adapt<ToolPackageDto>();
+        var dto = package.Adapt<ToolPackageDetailDto>();
         dto.ToolPackageCategoryName = category?.Name ?? string.Empty;
         query.Result = dto;
     }

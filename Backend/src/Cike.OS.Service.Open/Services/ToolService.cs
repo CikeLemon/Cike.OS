@@ -12,7 +12,7 @@ namespace Cike.OS.Service.Open.Services;
 [AutoValidation]
 public class ToolService : MinimalApiServiceBase
 {
-    public async Task<Ok<List<ToolDto>>> GetListAsync(
+    public async Task<Ok<List<ToolItemDto>>> GetListAsync(
         [FromServices] ILocalEventBus eventBus,
         long toolPackageId,
         CancellationToken cancellationToken = default)
@@ -22,12 +22,12 @@ public class ToolService : MinimalApiServiceBase
         return TypedResults.Ok(query.Result ?? []);
     }
 
-    public async Task<Results<Ok<ToolDto>, NotFound>> GetAsync(
+    public async Task<Results<Ok<ToolDetailDto>, NotFound>> GetAsync(
         [FromServices] ILocalEventBus eventBus,
         long id,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetToolQuery(id);
+        var query = new GetToolDetailQuery(id);
         await eventBus.PublishAsync(query, cancellationToken);
         return query.Result == null ? TypedResults.NotFound() : TypedResults.Ok(query.Result);
     }

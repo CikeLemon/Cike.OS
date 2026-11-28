@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolPackageCategoryDto, ToolPackageDto, ToolPackageStatus } from '@/api'
+import type { ToolPackageCategoryItemDto, ToolPackageDetailDto, ToolPackageStatus } from '@/api'
 import { postApiV1ToolPackages, putApiV1ToolPackagesById } from '@/api'
 import { LoaderCircle } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,9 +15,9 @@ import { TOOL_PACKAGE_STATUS, TOOL_PACKAGE_STATUS_OPTIONS } from '@/lib/tool-sta
 
 const props = defineProps<{
   open: boolean
-  categories: ToolPackageCategoryDto[]
+  categories: ToolPackageCategoryItemDto[]
   /** 传入为编辑，null 为新建 */
-  toolPackage?: ToolPackageDto | null
+  toolPackage?: ToolPackageDetailDto | null
 }>()
 
 const emit = defineEmits<{

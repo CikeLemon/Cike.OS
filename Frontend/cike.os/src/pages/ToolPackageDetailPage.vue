@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ToolDto, ToolPackageCategoryDto, ToolPackageDto } from '@/api'
-import { deleteApiV1ToolPackagesById, deleteApiV1ToolsById, getApiV1ToolPackageCategoriesList, getApiV1ToolPackagesById, getApiV1ToolsList } from '@/api'
+import type { ToolDetailDto, ToolItemDto, ToolPackageCategoryItemDto, ToolPackageDetailDto } from '@/api'
+import { deleteApiV1ToolPackagesById, deleteApiV1ToolsById, getApiV1ToolPackageCategoriesList, getApiV1ToolPackagesById, getApiV1ToolsById, getApiV1ToolsList } from '@/api'
 import { ArrowLeft, Pencil, Plus, Search, Trash } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -25,9 +25,9 @@ const router = useRouter()
 
 const packageId = computed(() => String(route.params.id ?? ''))
 
-const toolPackage = ref<ToolPackageDto | null>(null)
-const categories = ref<ToolPackageCategoryDto[]>([])
-const tools = ref<ToolDto[]>([])
+const toolPackage = ref<ToolPackageDetailDto | null>(null)
+const categories = ref<ToolPackageCategoryItemDto[]>([])
+const tools = ref<ToolItemDto[]>([])
 const loading = ref(true)
 const notFound = ref(false)
 
@@ -37,8 +37,10 @@ const filteredTools = computed(() => filterToolsByKeyword(tools.value, keyword.v
 const editPackageOpen = ref(false)
 const deletingPackage = ref(false)
 const toolSheetOpen = ref(false)
-const editingTool = ref<ToolDto | null>(null)
-const deletingTool = ref<ToolDto | null>(null)
+const editingTool = ref<ToolDetailDto | null>(null)
+const deletingTool = ref<ToolItemDto | null>(null)
+// 编辑前先取详情，拿到前不打开面板
+const toolDetailBusy = ref(false)
 const deleteToolBusy = ref(false)
 const deletePackageBusy = ref(false)
 
@@ -89,9 +91,21 @@ function openCreateTool() {
   toolSheetOpen.value = true
 }
 
-function openEditTool(tool: ToolDto) {
-  editingTool.value = tool
-  toolSheetOpen.value = true
+/** 编辑前先按 Id 取详情（列表行不带设置与参数定义），成功后才打开面板；失败 toast 且不打开 */
+async function openEditTool(tool: ToolItemDto) {
+  if (!tool.id || toolDetailBusy.value) return
+  toolDetailBusy.value = true
+  try {
+    const result = await getApiV1ToolsById({ path: { id: tool.id } })
+    if (result.error) {
+      toast.error(getErrorMessage(result))
+      return
+    }
+    editingTool.value = result.data ?? null
+    toolSheetOpen.value = true
+  } finally {
+    toolDetailBusy.value = false
+  }
 }
 
 async function onToolSaved() {
@@ -229,11 +243,11 @@ onMounted(loadAll)
                 <TableCell class="font-mono text-xs">{{ tool.code }}</TableCell>
                 <TableCell class="font-medium">{{ tool.name }}</TableCell>
                 <TableCell><Badge variant="secondary">{{ typeLabel(tool.type) }}</Badge></TableCell>
-                <TableCell class="text-muted-foreground">{{ tool.parameters?.length ?? 0 }}</TableCell>
+                <TableCell class="text-muted-foreground">{{ tool.parameterCount ?? 0 }}</TableCell>
                 <TableCell class="text-muted-foreground max-w-xs truncate">{{ tool.description || '—' }}</TableCell>
                 <TableCell class="text-right">
                   <div class="flex justify-end gap-1">
-                    <Button size="icon-sm" variant="ghost" aria-label="编辑工具" @click="openEditTool(tool)">
+                    <Button size="icon-sm" variant="ghost" aria-label="编辑工具" :disabled="toolDetailBusy" @click="openEditTool(tool)">
                       <Pencil />
                     </Button>
                     <Button size="icon-sm" variant="ghost" aria-label="删除工具" @click="deletingTool = tool">

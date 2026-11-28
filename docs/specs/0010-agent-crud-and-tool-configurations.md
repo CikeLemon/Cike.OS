@@ -1,6 +1,7 @@
 # Spec: Agent 增删改查（含工具绑定）与「工具参数」模块
 
 > Triage: `ready-for-agent`
+> **2026-11-28 修订（spec 0011）**：① Agent 第二步的选择树改为「工具包 → 工具」两层，下文「分类 → 工具包」分组的描述作废；② 「现有 Save / Get / Delete 不动」作废——`GET /UserToolConfigurations/{id}` 补全为返回 ToolName / Parameters / Values，并成为编辑弹窗的唯一回填来源（编辑一律调详情，禁止拿卡片行回填）；③ 本文所有裸 `XxxDto` / `XxxListDto` 类型名按 spec 0011 的映射改名。
 > 术语遵循根 `CONTEXT.md`（Agent、Agent 工具、用户工具配置、工具参数）；结构决策见 `docs/adr/0008-agent不绑模型与工具绑定合并为单表.md`；值对象直接作 API 契约见 ADR 0003；聚合内子实体写法、校验三层划分、DTO 继承、分页透传见 `Backend/AGENTS.md`。
 > 2026-11-27 经设计访谈七轮定稿。仓库现状：`AgentEntity` / `AgentOptions` / `AgentTool` / `AgentToolPackage` 只有实体与 EF 映射，没有任何用例与端点；`AgentsPage` 是占位页；`UserToolConfiguration` 已有单条 Save / Get / Delete。本 spec 是实现的唯一标准。
 
@@ -21,7 +22,7 @@
 5. 作为管理者，我展开「高级配置」能设置 TopK、频率惩罚、存在惩罚、Seed、停止词、推理输出、响应格式（文本 / JSON + Schema）、允许多次工具调用、允许后台响应，所有项留空就表示不设置。
 6. 作为管理者，我填的参数超出范围（比如温度填 3）时被拦下并提示，以便不会把模型不接受的值存进去。
 7. 作为管理者，第二步按「分类 → 工具包 → 工具」分组展示全部工具，顶部可以搜索，以便工具多的时候也能快速找到。
-8. 作为管理者，我勾某个工具包的「整包」，该包下的工具全部勾上并变为不可单独取消，以便一次绑定整个包。
+8. 作为管理者，我勾某个工具包的「整包」，该包下的工具全部勾上，以便一次绑定整个包。
 9. 作为管理者，我在整包状态下取消其中一个工具，整包勾选自动取消，变为只绑定剩下的工具。
 10. 作为管理者，我勾选单个工具，保存后这个 Agent 只能用这些工具。
 11. 作为管理者，我提交了不存在的工具包或工具时被拒绝且什么都不保存，以便绑定永远指向真实存在的东西。
@@ -101,9 +102,9 @@
   - 删除确认文案：「确定删除 Agent「{名称}」？已有会话仍可查看，但不能再对话。」
 - **Agent 表单对话框**（新建 / 编辑共用，两步，步骤标题可点击切换，底部始终有「上一步」（第一步隐藏）与「保存」）：
   - 第一步「基本信息」：名称、描述、指令（大号多行）；「模型参数」组：温度、输出上限、TopP、推理力度（列出枚举全部值）、工具模式（自动 / 不使用 / 必须使用）；「高级配置」默认折叠：TopK、频率惩罚、存在惩罚、Seed、停止词（逐条输入，最多 16 条）、推理输出、响应格式（文本 / JSON；JSON 时显示名称与 Schema 多行框）、允许多次工具调用、允许后台响应（开关）。所有模型参数留空 = 不设置。
-  - 第二步「工具包」：顶部搜索框；按「分类 → 工具包」分组平铺，分类与工具包可折叠；工具包行是「整包」勾选，下面是该包工具的勾选（名称 + 形态徽标）。勾「整包」= 工具全勾并禁用；取消任一工具 = 整包取消；搜索只过滤工具行，空包 / 空分类跟随隐藏。
+  - 第二步「工具包」：顶部搜索框；按「分类 → 工具包」分组平铺，分类与工具包可折叠；工具包行是「整包」勾选，下面是该包工具的勾选（名称 + 形态徽标）。勾「整包」= 工具全勾；整包状态下取消其中一个工具 = 整包自动取消、包内其余工具转为单选保留；搜索只过滤工具行，空包 / 空分类跟随隐藏。
   - 「保存」提交整个表单；新建成功后按跳转规则处理，编辑成功后关闭并刷新列表。
-  - 跳转规则（仅新建）：取提交的工具行展开成「生效的工具」（`Tool` 行本身 + `ToolPackage` 行对应包下的全部工具），其中有参数定义的 → toast 并跳到 `/tool-configurations?tools=<逗号分隔 Id>&from=<Agent 名称>`；没有 → 关闭并刷新列表。
+  - 跳转规则（仅新建）：取提交的工具行展开成「生效的工具」（`Tool` 行本身 + `ToolPackage` 行对应包下的全部工具），其中有参数定义且当前用户尚未配置的 → toast 并跳到 `/tool-configurations?tools=<逗号分隔 Id>&from=<Agent 名称>`（已配置的不算待配置，前端拿用户工具配置的 ToolOptions 过滤）；没有 → 关闭并刷新列表。
 - **工具参数页**：顶部（来自 Agent 的提示条，有 `from` / `tools` 查询参数时显示：「来自 Agent「X」：N 个工具待配置」+「立即配置」+ 关闭；进入页面时自动打开批量弹窗并预选这些 Id）；工具条（关键字搜索、「新增配置」）；卡片网格（每页 12 张，`UpdatedAt desc`）。
   - 卡片：工具名 + 形态徽标 + 「缺必填」徽标（任一必填参数在已存值里缺失）；每个参数一行「参数名：值」，`Sensitive` 的值默认 `••••••`、眼睛图标切换明文；底部「编辑」「删除」。删除确认：「确定删除「{工具名}」的参数配置？」
   - 「编辑」→ 单工具弹窗：按工具的参数定义生成表单（`Name` 标签、`Description` 提示、`Required` 星号、`Sensitive` 密码框），保存走现有单条 Save。
@@ -147,3 +148,12 @@
 - **风险（迁移）**：`AgentTools` 加非空 `AgentId` 依赖先清空存量行；应用迁移前按上文硬删两张表，不要带 `--no-build`。
 - **环境事实**：前端开发环境地址指向 https 端口，后端须以 `https` launch profile 启动；运行中的主服务会锁输出 DLL，编译前先停、验证完再拉起。用户常自己开着 Vite，不要动。
 - **验证链**：build + `dotnet test` + 抓 swagger + `pnpm gen:api` 后看生成层 diff + `pnpm typecheck` 一趟过；SQLite 测试不能替代 MySQL 行为验证。
+- **实施结果（2026-11-27，未提交待 review）**：
+  - 后端：`AgentEntity` 收口（`Create` / `Update` / `SyncTools`，聚合根上的意图方法沿 `ModelProvider` 先例保持 `public`，以便 EF 冒烟测试经仓储驱动同步）；`AgentTool.Create(type, targetId)` 不收 agentId——外键由聚合保存时写入（与 `ModelEntity` 先例一致）；`AgentOptions` 搬 Domain.Shared 并引用 M.E.AI.Abstractions 10.11.0（版本属性 `MicrosoftExtensionsAiVersion`）；`AgentToolType` 枚举；`AgentToolPackage` 删除。迁移 `20261127105243_AgentToolAsAgentSubEntity`（删 `AgentToolPackages` 表，`AgentTools` 的 `ToolId`→`TargetId`、`AgentToolPackageId`→`AgentId`，加 `Type`，加指向 `Agents` 的级联外键），应用前已硬删 dev 两表存量行，已应用到 dev MySQL。
+  - 推理选项校验：`Reasoning` 下 `Effort` / `Output` 各自可空（M.E.AI 语义：null = 用提供方默认），只校验设置了的那一个（走查发现「只设力度」被 400 后改）。
+  - `AgentToolOptionItemDto` 增加 `ParameterCount`（参数定义是 json 列，取回后内存里数），供前端判定新建后是否跳转填参数。
+  - 用户工具配置分页：框架的 `ToPaginationAsync` 扩展物理位于 Cike.Data.EFCore 包、Application 层引用不到，改为「配置仓储上 LINQ 联合工具表 + 仓储 `ToPagedListAsync(IQueryable<TEntity>)` 分页，再按页内工具 Id 批量取工具 / 包 / 分类、`Adapt` 后回填」。现有 `DELETE /UserToolConfigurations/{id}` 的 `{id}` 语义是工具 Id（与 Get / Save 一致），前端删除卡片传 `toolId`。
+  - 开发态当前用户：主服务在 Development 下没有认证也就没有 `ICurrentUser.Id`，用户工具配置接口会 400；宿主模块新增 `DevelopmentCurrentUser`（固定 `dev-user`）替换注册。
+  - 测试：`CikeOSTestsModule` 补 `DependsOn(CikeFluentValidationModule)`——HTTP 宿主与用例宿主共用进程级的 Validator 类型缓存，否则 ProblemDetails 断言随机失败（新增两个 HTTP 测试类后暴露）；`ServiceOpenTestHost` 增加假当前用户替换与 `PublishAsync` 造数入口。`dotnet test` 229/229。
+  - 前端：`lib/agent-options.ts`（枚举 / 选项 / `SELECT_UNSET` 哨兵）、`components/agents/`（`agent-form.ts` + 测试、`AgentToolPicker.vue`、`AgentFormDialog.vue`）、`components/tool-configurations/`（`tool-configuration-form.ts` + 测试、`ToolParameterFields.vue`、`ToolConfigurationCard.vue`、`ToolConfigurationEditDialog.vue`、`ToolConfigurationBatchDialog.vue`）、`pages/AgentsPage.vue`、`pages/ToolConfigurationsPage.vue`；shadcn 新增 `collapsible`、`card`；侧栏八项。vue-tsc 0 错、vitest 54/54、`pnpm build` 通过。
+  - 浏览器走查三轮：第一轮抓到 4 个 bug（Select 空串 value 卡死、`type=number` 的 v-model 转成 number 后 `.trim()` 炸、编辑弹窗受控输入没用 `v-model` 导致拿不到输入、删除传了配置 Id 而非工具 Id），第二轮抓到 2 个（推理力度单设被 400、数字枚举 Select 选项与字符串模型类型不一致导致回显空白），第三轮全部通过；顺手把「来自 Agent」提示条改为批量保存后自动收掉（否则刷新会再次弹出）。规则已写入两份 AGENTS.md。

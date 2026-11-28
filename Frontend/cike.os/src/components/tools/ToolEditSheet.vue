@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolDto } from '@/api'
+import type { ToolDetailDto } from '@/api'
 import { postApiV1Tools, putApiV1ToolsById } from '@/api'
 import { LoaderCircle } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -41,7 +41,7 @@ const props = defineProps<{
   open: boolean
   toolPackageId: string
   /** 传入为编辑，null 为新建 */
-  tool?: ToolDto | null
+  tool?: ToolDetailDto | null
 }>()
 
 const emit = defineEmits<{

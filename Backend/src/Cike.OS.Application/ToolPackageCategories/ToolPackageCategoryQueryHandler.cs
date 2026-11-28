@@ -17,15 +17,15 @@ public class ToolPackageCategoryQueryHandler(IReadOnlyRepository<ToolPackageCate
         var categories = await categoryRepository.ToListAsync(
             categoryRepository.GetQueryable().OrderBy(x => x.Name),
             cancellationToken);
-        query.Result = categories.Adapt<List<ToolPackageCategoryDto>>();
+        query.Result = categories.Adapt<List<ToolPackageCategoryItemDto>>();
     }
 
     [LocalEventHandler]
-    public async Task GetAsync(GetToolPackageCategoryQuery query, CancellationToken cancellationToken = default)
+    public async Task GetAsync(GetToolPackageCategoryDetailQuery query, CancellationToken cancellationToken = default)
     {
         using var _ = categoryRepository.BeginAsNoTracking();
 
         var category = await categoryRepository.FindAsync(query.Id, cancellationToken);
-        query.Result = category?.Adapt<ToolPackageCategoryDto>();
+        query.Result = category?.Adapt<ToolPackageCategoryDetailDto>();
     }
 }

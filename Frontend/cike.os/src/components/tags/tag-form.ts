@@ -1,4 +1,4 @@
-import type { CreateTagDto, TagDto, UpdateTagDto } from '@/api'
+import type { CreateTagDto, TagDetailDto, UpdateTagDto } from '@/api'
 
 /** 键的格式与后端 CreateTagDtoValidator 一致：小写字母开头，其后只允许小写字母、数字、- 和 _ */
 const TAG_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/
@@ -12,7 +12,7 @@ function emptyTagForm(): TagFormState {
   return { key: '', name: '' }
 }
 
-function tagFormFromDto(tag: TagDto | null | undefined): TagFormState {
+function tagFormFromDto(tag: TagDetailDto | null | undefined): TagFormState {
   return { key: tag?.key ?? '', name: tag?.name ?? '' }
 }
 

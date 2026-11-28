@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TagDto } from '@/api'
+import type { TagItemDto } from '@/api'
 import { Check, X } from '@lucide/vue'
 import { watch } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ const props = defineProps<{
   nameLocked: boolean
   /** 校验错误，按字段名给 */
   errors: Record<string, string>
-  tags: TagDto[]
+  tags: TagItemDto[]
   tagsReady: boolean
 }>()
 

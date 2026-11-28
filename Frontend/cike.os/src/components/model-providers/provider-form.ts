@@ -1,4 +1,4 @@
-import type { CreateModelProviderDto, ModelProviderDto, SaveModelProviderModelDto, TagDto, UpdateModelProviderDto } from '@/api'
+import type { CreateModelProviderDto, ModelProviderDetailDto, SaveModelProviderModelDto, TagItemDto, UpdateModelProviderDto } from '@/api'
 import { MODEL_PROVIDER_PROTOCOL, type AnyProviderSetting, type ProtocolValue } from '@/lib/model-provider-protocol'
 
 /**
@@ -50,13 +50,13 @@ function emptyProviderForm(): ProviderFormState {
  * 回填用：标签删除不清理模型上的引用，只保留当前标签列表里能匹配到的 Id。
  * 匹配不到的是已删标签，不带进表单，保存时自然不会提交、也不会被后端「标签不存在」拦下。
  */
-function existingTagIds(tagIds: ReadonlyArray<string> | null | undefined, tags: ReadonlyArray<TagDto>): string[] {
+function existingTagIds(tagIds: ReadonlyArray<string> | null | undefined, tags: ReadonlyArray<TagItemDto>): string[] {
   const existing = new Set(tags.map(tag => tag.id))
   return (tagIds ?? []).filter(id => existing.has(id))
 }
 
 /** 从详情回填；标签列表没加载成功时不过滤标签 Id（原样保留，保存由对话框拦下） */
-function providerFormFromDto(dto: ModelProviderDto | null | undefined, tags: TagDto[], tagsReady: boolean): ProviderFormState {
+function providerFormFromDto(dto: ModelProviderDetailDto | null | undefined, tags: TagItemDto[], tagsReady: boolean): ProviderFormState {
   const setting = dto?.setting
   return {
     name: dto?.name ?? '',

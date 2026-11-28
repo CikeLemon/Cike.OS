@@ -3,4 +3,4 @@ using Cike.OS.Application.Contracts.ToolPackageCategories.Dtos;
 
 namespace Cike.OS.Application.ToolPackageCategories.Queries;
 
-public record GetToolPackageCategoryListQuery : Query<List<ToolPackageCategoryDto>>;
+public record GetToolPackageCategoryListQuery : Query<List<ToolPackageCategoryItemDto>>;

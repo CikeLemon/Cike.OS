@@ -4,4 +4,4 @@ using Cike.Contracts.EntityDtos;
 
 namespace Cike.OS.Application.ToolPackages.Queries;
 
-public record GetToolPackagePagedListQuery(GetToolPackagePagedListDto Dto) : Query<PagedResultDto<ToolPackageDto>>;
+public record GetToolPackagePagedListQuery(GetToolPackagePagedListRequestDto Dto) : Query<PagedResultDto<ToolPackageItemDto>>;

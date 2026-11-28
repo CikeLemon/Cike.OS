@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type {
   AnthropicModelProviderSetting,
-  ModelProviderDto,
+  ModelProviderDetailDto,
   OpenAiChatCompletionModelProviderSetting,
   OpenAiResponseModelProviderSetting,
-  TagDto,
+  TagItemDto,
 } from '@/api'
 import {
   emptyModelRow,
@@ -30,7 +30,7 @@ function row(name: string, description = '', tagIds: string[] = []) {
   return { ...emptyModelRow(), name, description, tagIds }
 }
 
-const tags: TagDto[] = [{ id: '1', key: 'vision', name: '视觉' }, { id: '2', key: 'chat', name: '对话' }]
+const tags: TagItemDto[] = [{ id: '1', key: 'vision', name: '视觉' }, { id: '2', key: 'chat', name: '对话' }]
 
 describe('provider-form', () => {
   it('请求体：去首尾空白、带协议与全部模型；设置只带当前协议的字段', () => {
@@ -99,7 +99,7 @@ describe('provider-form', () => {
   })
 
   it('从详情回填：按设置的判别键取对应专属字段，模型按详情顺序还原', () => {
-    const openAi: ModelProviderDto = {
+    const openAi: ModelProviderDetailDto = {
       id: '5',
       name: 'E',
       protocol: 1,
@@ -124,7 +124,7 @@ describe('provider-form', () => {
     })
     expect(new Set(form.models.map(x => x.rowKey)).size).toBe(2)
 
-    const anthropic: ModelProviderDto = {
+    const anthropic: ModelProviderDetailDto = {
       name: 'F',
       protocol: 2,
       baseUrl: 'u',
@@ -142,7 +142,7 @@ describe('provider-form', () => {
     })
 
     // OpenAI Response：组织标识回填到同一个输入框
-    const response: ModelProviderDto = {
+    const response: ModelProviderDetailDto = {
       name: 'R',
       protocol: 3,
       baseUrl: 'u',
@@ -161,7 +161,7 @@ describe('provider-form', () => {
   })
 
   it('从详情回填：标签列表没加载成功时不过滤标签 Id（原样保留）', () => {
-    const dto: ModelProviderDto = { name: 'E', protocol: 1, baseUrl: 'u', apiKey: 'k', setting: { type: 1 }, models: [{ name: 'a', tagIds: ['1', '999'] }] }
+    const dto: ModelProviderDetailDto = { name: 'E', protocol: 1, baseUrl: 'u', apiKey: 'k', setting: { type: 1 }, models: [{ name: 'a', tagIds: ['1', '999'] }] }
     expect(providerFormFromDto(dto, tags, false).models[0].tagIds).toEqual(['1', '999'])
   })
 

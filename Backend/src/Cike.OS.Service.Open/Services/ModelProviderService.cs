@@ -13,7 +13,7 @@ namespace Cike.OS.Service.Open.Services;
 [AutoValidation]
 public class ModelProviderService : MinimalApiServiceBase
 {
-    public async Task<Ok<List<ModelProviderListDto>>> GetListAsync(
+    public async Task<Ok<List<ModelProviderItemDto>>> GetListAsync(
         [FromServices] ILocalEventBus eventBus,
         CancellationToken cancellationToken = default)
     {
@@ -22,12 +22,12 @@ public class ModelProviderService : MinimalApiServiceBase
         return TypedResults.Ok(query.Result ?? []);
     }
 
-    public async Task<Results<Ok<ModelProviderDto>, NotFound>> GetAsync(
+    public async Task<Results<Ok<ModelProviderDetailDto>, NotFound>> GetAsync(
         [FromServices] ILocalEventBus eventBus,
         long id,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetModelProviderQuery(id);
+        var query = new GetModelProviderDetailQuery(id);
         await eventBus.PublishAsync(query, cancellationToken);
         return query.Result == null ? TypedResults.NotFound() : TypedResults.Ok(query.Result);
     }

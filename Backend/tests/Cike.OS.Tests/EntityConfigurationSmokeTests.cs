@@ -3,7 +3,6 @@ using Cike.MultiTenancy;
 using Cike.OS.Domain.Entities;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
-using Cike.OS.Domain.ValueObjects;
 using Cike.OS.EntityFrameworkCore;
 using Cike.OS.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -36,109 +35,94 @@ public class EntityConfigurationSmokeTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task Agent_Domain_RoundTrip()
+    public async Task Agent_AsAggregateRoot_GetsIdTenant_AndSoftDeletesTools()
     {
+        // Agent 是聚合根，Agent 工具是它聚合内的子实体：随 Agent 保存时各自拿到 Id、写入租户与外键；加载用通用仓储的一级预加载
+        const long tenantId = 7;
         long agentId;
-        long packageId;
+        long removedToolId;
+        long keptToolId;
 
         using (var scope = _host.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
 
-            var agent = new AgentEntity
-            {
-                Name = "Smoke agent",
-                Description = "Agent round trip",
-                Instructions = "You are a helpful assistant.",
-                Options = new AgentOptions
+            var agent = AgentEntity.Create(
+                "Smoke agent",
+                null,
+                "You are a helpful assistant.",
+                new AgentOptions
                 {
                     Temperature = 0.7f,
                     MaxOutputTokens = 2048,
                     StopSequences = ["END"],
+                    // M.E.AI 的多态对象（$type 判别）与枚举都要能随 json 列 round-trip
+                    ToolMode = ChatToolMode.Auto,
+                    Reasoning = new ReasoningOptions { Effort = ReasoningEffort.High },
                 },
-            };
+                [
+                    AgentTool.Create(AgentToolType.ToolPackage, 11),
+                    AgentTool.Create(AgentToolType.Tool, 22),
+                ]);
             dbContext.Add(agent);
             await dbContext.SaveChangesAsync();
+
+            // 同一条绑定只能出现一次是聚合内不变量
+            Assert.Throws<UserFriendlyException>(() => agent.SyncTools(
+            [
+                AgentTool.Create(AgentToolType.Tool, 22),
+                AgentTool.Create(AgentToolType.Tool, 22),
+            ]));
+            // 聚合根与它的子实体随保存各自拿到雪花 Id、写入租户与外键
             agentId = agent.Id;
-
-            var package = new AgentToolPackage
+            removedToolId = agent.Tools[0].Id;
+            keptToolId = agent.Tools[1].Id;
+            Assert.True(agentId > 0);
+            Assert.Equal(tenantId, agent.TenantId);
+            Assert.All(agent.Tools, x =>
             {
-                AgentId = agentId,
-                ToolPackageId = 1,
-                IsFull = true,
-                AgentTools =
-                [
-                    new AgentTool { AgentToolPackageId = 0, ToolId = 1 },
-                ],
-            };
-            dbContext.Add(package);
-            await dbContext.SaveChangesAsync();
-            packageId = package.Id;
+                Assert.True(x.Id > 0);
+                Assert.Equal((tenantId, agentId), (x.TenantId, x.AgentId));
+            });
+        }
+
+        using (var scope = _host.CreateScope())
+        {
+            using var _ = scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Change(tenantId);
+
+            // 通用仓储的一级预加载：Agent 连同它的工具一次查全；模型选项从 json 列读回
+            var repository = scope.ServiceProvider.GetRequiredService<IRepository<AgentEntity, long>>();
+            var loaded = Assert.Single(await repository.ToListAsync(
+                repository.WithDetails(x => x.Tools).Where(x => x.Id == agentId)));
+            Assert.Equal(2, loaded.Tools.Count);
+            Assert.All(loaded.Tools, x => Assert.Equal((tenantId, agentId), (x.TenantId, x.AgentId)));
+            Assert.Equal(0.7f, loaded.Options.Temperature);
+            Assert.Equal("END", Assert.Single(loaded.Options.StopSequences!));
+            Assert.IsType<AutoChatToolMode>(loaded.Options.ToolMode);
+            Assert.Equal(ReasoningEffort.High, loaded.Options.Reasoning!.Effort);
+
+            // 同步工具只留一条：被移除的条目在保存时转软删
+            loaded.SyncTools([AgentTool.Create(AgentToolType.Tool, 22)]);
+            await repository.UpdateAsync(loaded);
+
+            // 删 Agent：它和仍在名下的工具一并软删
+            await repository.DeleteAsync(loaded);
         }
 
         using (var scope = _host.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
 
-            var agent = await dbContext.Agents.AsNoTracking().SingleAsync(x => x.Id == agentId);
-            Assert.Equal("Smoke agent", agent.Name);
-            Assert.Equal(0.7f, agent.Options.Temperature);
-            Assert.Equal(2048, agent.Options.MaxOutputTokens);
-            Assert.Equal("END", Assert.Single(agent.Options.StopSequences!));
+            Assert.True((await dbContext.Agents.IgnoreQueryFilters().SingleAsync(x => x.Id == agentId)).IsDeleted);
 
-            var package = await dbContext.AgentToolPackages.AsNoTracking()
-                .Include(x => x.AgentTools)
-                .SingleAsync(x => x.Id == packageId);
-            Assert.True(package.IsFull);
-            var child = Assert.Single(package.AgentTools);
-            Assert.Equal(packageId, child.AgentToolPackageId);
-            Assert.Equal(1, child.ToolId);
-        }
-    }
-
-    [Fact]
-    public async Task AgentToolPackage_Delete_CascadesToChildren()
-    {
-        long packageId;
-
-        using (var scope = _host.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-
-            var package = new AgentToolPackage
-            {
-                AgentId = 1,
-                ToolPackageId = 1,
-                AgentTools =
-                [
-                    new AgentTool { AgentToolPackageId = 0, ToolId = 1 },
-                ],
-            };
-            dbContext.Add(package);
-            await dbContext.SaveChangesAsync();
-            packageId = package.Id;
-        }
-
-        using (var scope = _host.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-            // 软删聚合根不会触发数据库级联（DELETE 被改写为软删 UPDATE），
-            // 子项必须先加载跟踪，客户端级联才会把子项一并标记删除。
-            var package = await dbContext.AgentToolPackages
-                .Include(x => x.AgentTools)
-                .SingleAsync(x => x.Id == packageId);
-            dbContext.Remove(package);
-            await dbContext.SaveChangesAsync();
-        }
-
-        using (var scope = _host.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-
-            Assert.False(await dbContext.AgentToolPackages.IgnoreQueryFilters().AnyAsync(x => x.Id == packageId && !x.IsDeleted));
-
-            var child = await dbContext.AgentTools.IgnoreQueryFilters().SingleAsync(x => x.AgentToolPackageId == packageId);
-            Assert.True(child.IsDeleted);
+            var tools = await dbContext.AgentTools.IgnoreQueryFilters()
+                .Where(x => x.AgentId == agentId)
+                .ToListAsync();
+            Assert.Equal(2, tools.Count);
+            Assert.All(tools, x => Assert.True(x.IsDeleted));
+            Assert.Contains(tools, x => x.Id == removedToolId);
+            Assert.Contains(tools, x => x.Id == keptToolId);
         }
     }
 

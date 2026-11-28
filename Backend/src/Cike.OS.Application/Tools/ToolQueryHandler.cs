@@ -20,16 +20,21 @@ public class ToolQueryHandler(IReadOnlyRepository<Tool, long> toolRepository)
                 .OrderBy(x => x.Code),
             cancellationToken);
 
-        // 参数定义与设置都是值对象，直接作为契约字段带出（两边声明类型相同，Mapster 原样引用）
-        query.Result = tools.Adapt<List<ToolDto>>();
+        // 参数定义是 json 列，不能在 SQL 里数个数：Adapt 之后按取回的实体顺序一一对应数
+        var items = tools.Adapt<List<ToolItemDto>>();
+        foreach (var (item, tool) in items.Zip(tools))
+        {
+            item.ParameterCount = tool.Parameters.Count;
+        }
+        query.Result = items;
     }
 
     [LocalEventHandler]
-    public async Task GetAsync(GetToolQuery query, CancellationToken cancellationToken = default)
+    public async Task GetAsync(GetToolDetailQuery query, CancellationToken cancellationToken = default)
     {
         using var _ = toolRepository.BeginAsNoTracking();
 
         var tool = await toolRepository.FindAsync(query.Id, cancellationToken);
-        query.Result = tool?.Adapt<ToolDto>();
+        query.Result = tool?.Adapt<ToolDetailDto>();
     }
 }

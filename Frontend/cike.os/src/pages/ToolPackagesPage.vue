@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ToolPackageCategoryDto, ToolPackageDto, ToolPackageStatus } from '@/api'
-import { deleteApiV1ToolPackagesById, getApiV1ToolPackageCategoriesList, getApiV1ToolPackagesPagedList } from '@/api'
+import type { ToolPackageCategoryItemDto, ToolPackageDetailDto, ToolPackageItemDto, ToolPackageStatus } from '@/api'
+import { deleteApiV1ToolPackagesById, getApiV1ToolPackageCategoriesList, getApiV1ToolPackagesById, getApiV1ToolPackagesPagedList } from '@/api'
 import { Pencil, Plus, Search, Trash } from '@lucide/vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -25,8 +25,8 @@ const router = useRouter()
 
 const PAGE_SIZE = 10
 
-const categories = ref<ToolPackageCategoryDto[]>([])
-const items = ref<ToolPackageDto[]>([])
+const categories = ref<ToolPackageCategoryItemDto[]>([])
+const items = ref<ToolPackageItemDto[]>([])
 const total = ref(0)
 const loading = ref(true)
 
@@ -38,9 +38,10 @@ const statusFilter = ref<string>(ALL)
 const page = ref(1)
 
 const dialogOpen = ref(false)
-const editing = ref<ToolPackageDto | null>(null)
-const deleting = ref<ToolPackageDto | null>(null)
+const editing = ref<ToolPackageDetailDto | null>(null)
+const deleting = ref<ToolPackageItemDto | null>(null)
 const deleteBusy = ref(false)
+const detailBusy = ref(false)
 
 async function loadCategories() {
   const result = await getApiV1ToolPackageCategoriesList()
@@ -91,9 +92,21 @@ function openCreate() {
   dialogOpen.value = true
 }
 
-function openEdit(toolPackage: ToolPackageDto) {
-  editing.value = toolPackage
-  dialogOpen.value = true
+/** 编辑前先按 Id 取详情（列表行不带 Readme 与分类 Id），成功后才打开对话框；失败 toast 且不打开 */
+async function openEdit(toolPackage: ToolPackageItemDto) {
+  if (!toolPackage.id || detailBusy.value) return
+  detailBusy.value = true
+  try {
+    const result = await getApiV1ToolPackagesById({ path: { id: toolPackage.id } })
+    if (result.error) {
+      toast.error(getErrorMessage(result))
+      return
+    }
+    editing.value = result.data ?? null
+    dialogOpen.value = true
+  } finally {
+    detailBusy.value = false
+  }
 }
 
 /** 新建成功 → 自动进入详情页维护工具；编辑成功 → 刷新列表 */
@@ -211,7 +224,7 @@ onMounted(() => {
             <TableCell class="text-muted-foreground">{{ formatDateTime(toolPackage.updatedAt) }}</TableCell>
             <TableCell class="text-right" @click.stop>
               <div class="flex justify-end gap-1">
-                <Button size="icon-sm" variant="ghost" aria-label="编辑" @click="openEdit(toolPackage)">
+                <Button size="icon-sm" variant="ghost" aria-label="编辑" :disabled="detailBusy" @click="openEdit(toolPackage)">
                   <Pencil />
                 </Button>
                 <Button size="icon-sm" variant="ghost" aria-label="删除" @click="deleting = toolPackage">

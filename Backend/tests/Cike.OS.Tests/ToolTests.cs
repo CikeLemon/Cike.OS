@@ -42,19 +42,19 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
         var stdioId = await TestDataFactory.CreateToolAsync(_host, packageId, type: ToolType.StdioMcp);
         var skillId = await TestDataFactory.CreateToolAsync(_host, packageId, type: ToolType.Skill, skillDirectory: "skills/0/abc");
 
-        var http = new GetToolQuery(httpId);
+        var http = new GetToolDetailQuery(httpId);
         await _host.PublishAsync(http);
         var httpSetting = Assert.IsType<HttpMcpToolSetting>(http.Result!.Setting);
         Assert.Equal(ToolType.HttpMcp, http.Result.Type);
         Assert.Equal("http://localhost:5000/mcp", httpSetting.Endpoint);
         Assert.Equal(TimeSpan.FromSeconds(30), httpSetting.ConnectionTimeout);
 
-        var stdio = new GetToolQuery(stdioId);
+        var stdio = new GetToolDetailQuery(stdioId);
         await _host.PublishAsync(stdio);
         var stdioSetting = Assert.IsType<StdioMcpToolSetting>(stdio.Result!.Setting);
         Assert.Equal("node", stdioSetting.Command);
 
-        var skill = new GetToolQuery(skillId);
+        var skill = new GetToolDetailQuery(skillId);
         await _host.PublishAsync(skill);
         var skillSetting = Assert.IsType<SkillToolSetting>(skill.Result!.Setting);
         Assert.Equal("skills/0/abc", skillSetting.Directory);
@@ -90,7 +90,7 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
         });
         await _host.PublishAsync(command);
 
-        var query = new GetToolQuery(command.Id);
+        var query = new GetToolDetailQuery(command.Id);
         await _host.PublishAsync(query);
 
         var parameter = Assert.Single(query.Result!.Parameters);
@@ -211,7 +211,7 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
             Setting = new StdioMcpToolSetting { Name = "stdio", Command = "python", Arguments = ["-m", "server"] },
         }));
 
-        var query = new GetToolQuery(toolId);
+        var query = new GetToolDetailQuery(toolId);
         await _host.PublishAsync(query);
 
         Assert.Equal("after", query.Result!.Code);
@@ -236,7 +236,7 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
         })));
         Assert.Contains("不可修改", ex.Message);
 
-        var query = new GetToolQuery(toolId);
+        var query = new GetToolDetailQuery(toolId);
         await _host.PublishAsync(query);
         Assert.Equal(ToolType.HttpMcp, query.Result!.Type);
         Assert.IsType<HttpMcpToolSetting>(query.Result.Setting);
@@ -263,28 +263,32 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
     }
 
     [Fact]
-    public async Task Delete_ReferencedByAgentTool_Throws()
+    public async Task Delete_ReferencedByAgentSingleTool_Throws()
     {
         var packageId = await CreatePackageAsync();
         var toolId = await TestDataFactory.CreateToolAsync(_host, packageId);
-
-        using (var scope = _host.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
-            dbContext.Add(new AgentToolPackage
-            {
-                AgentId = 1,
-                ToolPackageId = packageId,
-                AgentTools = [new AgentTool { ToolId = toolId }],
-            });
-            await dbContext.SaveChangesAsync();
-        }
+        await TestDataFactory.CreateAgentAsync(_host, tools: [TestDataFactory.AgentTool(AgentToolType.Tool, toolId)]);
 
         await Assert.ThrowsAsync<UserFriendlyException>(() => _host.PublishAsync(new DeleteToolCommand(toolId)));
 
-        var query = new GetToolQuery(toolId);
+        var query = new GetToolDetailQuery(toolId);
         await _host.PublishAsync(query);
         Assert.NotNull(query.Result);
+    }
+
+    [Fact]
+    public async Task Delete_OnlyCoveredByAgentWholePackage_Succeeds()
+    {
+        // 整包绑定不计：包里少一个工具只是不生效，不需要守护
+        var packageId = await CreatePackageAsync();
+        var toolId = await TestDataFactory.CreateToolAsync(_host, packageId);
+        await TestDataFactory.CreateAgentAsync(_host, tools: [TestDataFactory.AgentTool(AgentToolType.ToolPackage, packageId)]);
+
+        await _host.PublishAsync(new DeleteToolCommand(toolId));
+
+        var query = new GetToolDetailQuery(toolId);
+        await _host.PublishAsync(query);
+        Assert.Null(query.Result);
     }
 
     [Fact]
@@ -295,7 +299,7 @@ public class ToolTests : IClassFixture<CikeOSTestHost>
 
         await _host.PublishAsync(new DeleteToolCommand(toolId));
 
-        var query = new GetToolQuery(toolId);
+        var query = new GetToolDetailQuery(toolId);
         await _host.PublishAsync(query);
         Assert.Null(query.Result);
     }

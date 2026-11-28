@@ -20,8 +20,6 @@ public class CikeOSDbContext : CikeDbContext<CikeOSDbContext>
 
     public virtual DbSet<AgentEntity> Agents { get; set; }
 
-    public virtual DbSet<AgentToolPackage> AgentToolPackages { get; set; }
-
     public virtual DbSet<AgentTool> AgentTools { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }

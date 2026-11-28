@@ -38,7 +38,7 @@ public class ModelProviderQueryHandler(
             cancellationToken);
         var modelsByProvider = models.ToLookup(x => x.ModelProviderId);
 
-        var items = providers.Adapt<List<ModelProviderListDto>>();
+        var items = providers.Adapt<List<ModelProviderItemDto>>();
         foreach (var item in items)
         {
             item.ModelNames = modelsByProvider[item.Id].Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal).ToList();
@@ -49,7 +49,7 @@ public class ModelProviderQueryHandler(
 
     /// <summary>详情：连同模型只读加载，实体 → DTO 交给 Mapster（基类继承的 Id / 审计字段按名字自动带上），模型按名称排序。</summary>
     [LocalEventHandler]
-    public async Task GetAsync(GetModelProviderQuery query, CancellationToken cancellationToken = default)
+    public async Task GetAsync(GetModelProviderDetailQuery query, CancellationToken cancellationToken = default)
     {
         using var _ = providerRepository.BeginAsNoTracking();
 
@@ -62,7 +62,7 @@ public class ModelProviderQueryHandler(
             return;
         }
 
-        var dto = provider.Adapt<ModelProviderDto>();
+        var dto = provider.Adapt<ModelProviderDetailDto>();
         dto.Models = dto.Models.OrderBy(x => x.Name, StringComparer.Ordinal).ToList();
         query.Result = dto;
     }

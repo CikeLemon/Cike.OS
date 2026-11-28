@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TagDto } from '@/api'
+import type { TagItemDto } from '@/api'
 import { Check, ChevronsUpDown } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 const props = withDefaults(
   defineProps<{
     /** 可选项：平台标签列表 */
-    tags: TagDto[]
+    tags: TagItemDto[]
     disabled?: boolean
     placeholder?: string
     /** 列表为空时的提示（如「暂无可选标签」或「标签列表加载失败」） */

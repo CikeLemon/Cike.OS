@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Cike.Core" Version="$(CikeVersion)" />
     <PackageReference Include="ModelContextProtocol.Core" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="$(MicrosoftExtensionsAiVersion)" />
   </ItemGroup>
 
 </Project>

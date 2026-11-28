@@ -4,9 +4,103 @@ export type ClientOptions = {
     baseUrl: 'http://127.0.0.1:5182' | (string & {});
 };
 
+export type AgentChatResponseFormat = {
+    type?: AgentChatResponseFormatType;
+    jsonSchemaName?: string | null;
+    jsonSchemaDescriptor?: string | null;
+};
+
+/**
+ * {"Text":1, "Json":2}
+ */
+export type AgentChatResponseFormatType = 1 | 2;
+
+export type AgentDetailDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    name?: string | null;
+    description?: string | null;
+    instructions?: string | null;
+    options?: AgentOptions;
+    tools?: Array<AgentToolItemDto> | null;
+};
+
+export type AgentItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    name?: string | null;
+    description?: string | null;
+};
+
+export type AgentItemDtoPagedResultDto = {
+    total?: string;
+    items?: Array<AgentItemDto> | null;
+};
+
+export type AgentOptions = {
+    temperature?: number | null;
+    maxOutputTokens?: number | null;
+    topP?: number | null;
+    topK?: number | null;
+    frequencyPenalty?: number | null;
+    presencePenalty?: number | null;
+    seed?: string | null;
+    reasoning?: ReasoningOptions;
+    responseFormat?: AgentChatResponseFormat;
+    stopSequences?: Array<string> | null;
+    allowMultipleToolCalls?: boolean | null;
+    toolMode?: ChatToolMode | AutoChatToolMode | NoneChatToolMode | RequiredChatToolMode | null;
+    allowBackgroundResponses?: boolean | null;
+};
+
+export type AgentToolItemDto = {
+    type?: AgentToolType;
+    targetId?: string;
+};
+
+export type AgentToolOptionItemDto = {
+    toolId?: string;
+    name?: string | null;
+    type?: ToolType;
+    parameterCount?: number;
+};
+
+export type AgentToolPackageOptionItemDto = {
+    toolPackageId?: string;
+    name?: string | null;
+    tools?: Array<AgentToolOptionItemDto> | null;
+};
+
+/**
+ * {"ToolPackage":1, "Tool":2}
+ */
+export type AgentToolType = 1 | 2;
+
 export type AnthropicModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
     version?: string | null;
     type: 2;
+};
+
+export type AutoChatToolMode = Omit<ChatToolMode, '$type'> & {
+    $type: 'auto';
+};
+
+export type ChatToolMode = {
+    $type: string;
+};
+
+export type CreateAgentDto = {
+    name?: string | null;
+    description?: string | null;
+    instructions?: string | null;
+    options?: AgentOptions;
+    tools?: Array<SaveAgentToolDto> | null;
 };
 
 export type CreateModelProviderDto = {
@@ -66,18 +160,13 @@ export type HttpMcpToolSetting = Omit<ToolSetting, 'type'> & {
  */
 export type HttpTransportMode = 0 | 1 | 2;
 
-export type ModelDto = {
-    id?: string;
-    createdAt?: string;
-    createdBy?: string;
-    updatedAt?: string;
-    updatedBy?: string;
+export type ModelItemDto = {
     name?: string | null;
     description?: string | null;
     tagIds?: Array<string> | null;
 };
 
-export type ModelProviderDto = {
+export type ModelProviderDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -88,10 +177,10 @@ export type ModelProviderDto = {
     baseUrl?: string | null;
     apiKey?: string | null;
     setting?: OpenAiChatCompletionModelProviderSetting | OpenAiResponseModelProviderSetting | AnthropicModelProviderSetting | null;
-    models?: Array<ModelDto> | null;
+    models?: Array<ModelItemDto> | null;
 };
 
-export type ModelProviderListDto = {
+export type ModelProviderItemDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -111,6 +200,10 @@ export type ModelProviderSetting = {
     type: 1 | 2 | 3;
 };
 
+export type NoneChatToolMode = Omit<ChatToolMode, '$type'> & {
+    $type: 'none';
+};
+
 export type OpenAiChatCompletionModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
     organization?: string | null;
     type: 1;
@@ -119,6 +212,31 @@ export type OpenAiChatCompletionModelProviderSetting = Omit<ModelProviderSetting
 export type OpenAiResponseModelProviderSetting = Omit<ModelProviderSetting, 'type'> & {
     organization?: string | null;
     type: 3;
+};
+
+/**
+ * {"None":0, "Low":1, "Medium":2, "High":3, "ExtraHigh":4}
+ */
+export type ReasoningEffort = 0 | 1 | 2 | 3 | 4;
+
+export type ReasoningOptions = {
+    effort?: ReasoningEffort;
+    output?: ReasoningOutput;
+};
+
+/**
+ * {"None":0, "Summary":1, "Full":2}
+ */
+export type ReasoningOutput = 0 | 1 | 2;
+
+export type RequiredChatToolMode = Omit<ChatToolMode, '$type'> & {
+    requiredFunctionName?: string | null;
+    $type: 'required';
+};
+
+export type SaveAgentToolDto = {
+    type?: AgentToolType;
+    targetId?: string;
 };
 
 export type SaveModelProviderModelDto = {
@@ -150,7 +268,7 @@ export type StdioMcpToolSetting = Omit<ToolSetting, 'type'> & {
     type: 3;
 };
 
-export type TagDto = {
+export type TagDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -160,12 +278,22 @@ export type TagDto = {
     name?: string | null;
 };
 
-export type TagDtoPagedResultDto = {
-    total?: string;
-    items?: Array<TagDto> | null;
+export type TagItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    key?: string | null;
+    name?: string | null;
 };
 
-export type ToolDto = {
+export type TagItemDtoPagedResultDto = {
+    total?: string;
+    items?: Array<TagItemDto> | null;
+};
+
+export type ToolDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -180,7 +308,20 @@ export type ToolDto = {
     setting?: SkillToolSetting | HttpMcpToolSetting | StdioMcpToolSetting | null;
 };
 
-export type ToolPackageCategoryDto = {
+export type ToolItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    code?: string | null;
+    name?: string | null;
+    description?: string | null;
+    type?: ToolType;
+    parameterCount?: number;
+};
+
+export type ToolPackageCategoryDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -189,7 +330,16 @@ export type ToolPackageCategoryDto = {
     name?: string | null;
 };
 
-export type ToolPackageDto = {
+export type ToolPackageCategoryItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    name?: string | null;
+};
+
+export type ToolPackageDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
@@ -205,9 +355,23 @@ export type ToolPackageDto = {
     status?: ToolPackageStatus;
 };
 
-export type ToolPackageDtoPagedResultDto = {
+export type ToolPackageItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    code?: string | null;
+    name?: string | null;
+    description?: string | null;
+    icon?: string | null;
+    toolPackageCategoryName?: string | null;
+    status?: ToolPackageStatus;
+};
+
+export type ToolPackageItemDtoPagedResultDto = {
     total?: string;
-    items?: Array<ToolPackageDto> | null;
+    items?: Array<ToolPackageItemDto> | null;
 };
 
 /**
@@ -241,6 +405,14 @@ export type ToolValue = {
  * {"Literal":1, "ParameterReference":2}
  */
 export type ToolValueType = 1 | 2;
+
+export type UpdateAgentDto = {
+    name?: string | null;
+    description?: string | null;
+    instructions?: string | null;
+    options?: AgentOptions;
+    tools?: Array<SaveAgentToolDto> | null;
+};
 
 export type UpdateModelProviderDto = {
     name?: string | null;
@@ -282,17 +454,160 @@ export type UploadSkillPackageResultDto = {
     directory?: string | null;
 };
 
-export type UserToolConfigurationDto = {
+export type UserToolConfigurationDetailDto = {
     id?: string;
     createdAt?: string;
     createdBy?: string;
     updatedAt?: string;
     updatedBy?: string;
     toolId?: string;
+    toolName?: string | null;
+    parameters?: Array<ToolParameterDefinition> | null;
     values?: {
         [key: string]: string;
     } | null;
 };
+
+export type UserToolConfigurationItemDto = {
+    id?: string;
+    createdAt?: string;
+    createdBy?: string;
+    updatedAt?: string;
+    updatedBy?: string;
+    toolId?: string;
+    toolName?: string | null;
+    toolType?: ToolType;
+    toolPackageName?: string | null;
+    toolPackageCategoryName?: string | null;
+    parameters?: Array<ToolParameterDefinition> | null;
+    values?: {
+        [key: string]: string;
+    } | null;
+};
+
+export type UserToolConfigurationItemDtoPagedResultDto = {
+    total?: string;
+    items?: Array<UserToolConfigurationItemDto> | null;
+};
+
+export type UserToolConfigurationToolOptionItemDto = {
+    toolId?: string;
+    toolName?: string | null;
+    toolType?: ToolType;
+    toolPackageName?: string | null;
+    parameters?: Array<ToolParameterDefinition> | null;
+    configured?: boolean;
+};
+
+export type GetApiV1AgentsPagedListData = {
+    body?: never;
+    path?: never;
+    query: {
+        keyword?: string;
+        Page: number;
+        PageSize: number;
+        Sorting?: string;
+    };
+    url: '/api/v1/Agents/PagedList';
+};
+
+export type GetApiV1AgentsPagedListResponses = {
+    /**
+     * OK
+     */
+    200: AgentItemDtoPagedResultDto;
+};
+
+export type GetApiV1AgentsPagedListResponse = GetApiV1AgentsPagedListResponses[keyof GetApiV1AgentsPagedListResponses];
+
+export type GetApiV1AgentsToolOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Agents/ToolOptions';
+};
+
+export type GetApiV1AgentsToolOptionsResponses = {
+    /**
+     * OK
+     */
+    200: Array<AgentToolPackageOptionItemDto>;
+};
+
+export type GetApiV1AgentsToolOptionsResponse = GetApiV1AgentsToolOptionsResponses[keyof GetApiV1AgentsToolOptionsResponses];
+
+export type DeleteApiV1AgentsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Agents/{id}';
+};
+
+export type DeleteApiV1AgentsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type GetApiV1AgentsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Agents/{id}';
+};
+
+export type GetApiV1AgentsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1AgentsByIdResponses = {
+    /**
+     * OK
+     */
+    200: AgentDetailDto;
+};
+
+export type GetApiV1AgentsByIdResponse = GetApiV1AgentsByIdResponses[keyof GetApiV1AgentsByIdResponses];
+
+export type PutApiV1AgentsByIdData = {
+    body: UpdateAgentDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Agents/{id}';
+};
+
+export type PutApiV1AgentsByIdResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};
+
+export type PostApiV1AgentsData = {
+    body: CreateAgentDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Agents';
+};
+
+export type PostApiV1AgentsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1AgentsResponse = PostApiV1AgentsResponses[keyof PostApiV1AgentsResponses];
 
 export type GetData = {
     body?: never;
@@ -321,7 +636,7 @@ export type GetApiV1ModelProvidersListResponses = {
     /**
      * OK
      */
-    200: Array<ModelProviderListDto>;
+    200: Array<ModelProviderItemDto>;
 };
 
 export type GetApiV1ModelProvidersListResponse = GetApiV1ModelProvidersListResponses[keyof GetApiV1ModelProvidersListResponses];
@@ -362,7 +677,7 @@ export type GetApiV1ModelProvidersByIdResponses = {
     /**
      * OK
      */
-    200: ModelProviderDto;
+    200: ModelProviderDetailDto;
 };
 
 export type GetApiV1ModelProvidersByIdResponse = GetApiV1ModelProvidersByIdResponses[keyof GetApiV1ModelProvidersByIdResponses];
@@ -428,7 +743,7 @@ export type GetApiV1TagsListResponses = {
     /**
      * OK
      */
-    200: Array<TagDto>;
+    200: Array<TagItemDto>;
 };
 
 export type GetApiV1TagsListResponse = GetApiV1TagsListResponses[keyof GetApiV1TagsListResponses];
@@ -449,26 +764,10 @@ export type GetApiV1TagsPagedListResponses = {
     /**
      * OK
      */
-    200: TagDtoPagedResultDto;
+    200: TagItemDtoPagedResultDto;
 };
 
 export type GetApiV1TagsPagedListResponse = GetApiV1TagsPagedListResponses[keyof GetApiV1TagsPagedListResponses];
-
-export type PostApiV1TagsData = {
-    body: CreateTagDto;
-    path?: never;
-    query?: never;
-    url: '/api/v1/Tags';
-};
-
-export type PostApiV1TagsResponses = {
-    /**
-     * OK
-     */
-    200: string;
-};
-
-export type PostApiV1TagsResponse = PostApiV1TagsResponses[keyof PostApiV1TagsResponses];
 
 export type DeleteApiV1TagsByIdData = {
     body?: never;
@@ -486,6 +785,31 @@ export type DeleteApiV1TagsByIdResponses = {
     200: unknown;
 };
 
+export type GetApiV1TagsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/Tags/{id}';
+};
+
+export type GetApiV1TagsByIdErrors = {
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetApiV1TagsByIdResponses = {
+    /**
+     * OK
+     */
+    200: TagDetailDto;
+};
+
+export type GetApiV1TagsByIdResponse = GetApiV1TagsByIdResponses[keyof GetApiV1TagsByIdResponses];
+
 export type PutApiV1TagsByIdData = {
     body: UpdateTagDto;
     path: {
@@ -502,6 +826,22 @@ export type PutApiV1TagsByIdResponses = {
     200: unknown;
 };
 
+export type PostApiV1TagsData = {
+    body: CreateTagDto;
+    path?: never;
+    query?: never;
+    url: '/api/v1/Tags';
+};
+
+export type PostApiV1TagsResponses = {
+    /**
+     * OK
+     */
+    200: string;
+};
+
+export type PostApiV1TagsResponse = PostApiV1TagsResponses[keyof PostApiV1TagsResponses];
+
 export type GetApiV1ToolPackageCategoriesListData = {
     body?: never;
     path?: never;
@@ -513,7 +853,7 @@ export type GetApiV1ToolPackageCategoriesListResponses = {
     /**
      * OK
      */
-    200: Array<ToolPackageCategoryDto>;
+    200: Array<ToolPackageCategoryItemDto>;
 };
 
 export type GetApiV1ToolPackageCategoriesListResponse = GetApiV1ToolPackageCategoriesListResponses[keyof GetApiV1ToolPackageCategoriesListResponses];
@@ -554,7 +894,7 @@ export type GetApiV1ToolPackageCategoriesByIdResponses = {
     /**
      * OK
      */
-    200: ToolPackageCategoryDto;
+    200: ToolPackageCategoryDetailDto;
 };
 
 export type GetApiV1ToolPackageCategoriesByIdResponse = GetApiV1ToolPackageCategoriesByIdResponses[keyof GetApiV1ToolPackageCategoriesByIdResponses];
@@ -612,7 +952,7 @@ export type GetApiV1ToolPackagesPagedListResponses = {
     /**
      * OK
      */
-    200: ToolPackageDtoPagedResultDto;
+    200: ToolPackageItemDtoPagedResultDto;
 };
 
 export type GetApiV1ToolPackagesPagedListResponse = GetApiV1ToolPackagesPagedListResponses[keyof GetApiV1ToolPackagesPagedListResponses];
@@ -653,7 +993,7 @@ export type GetApiV1ToolPackagesByIdResponses = {
     /**
      * OK
      */
-    200: ToolPackageDto;
+    200: ToolPackageDetailDto;
 };
 
 export type GetApiV1ToolPackagesByIdResponse = GetApiV1ToolPackagesByIdResponses[keyof GetApiV1ToolPackagesByIdResponses];
@@ -703,7 +1043,7 @@ export type GetApiV1ToolsListResponses = {
     /**
      * OK
      */
-    200: Array<ToolDto>;
+    200: Array<ToolItemDto>;
 };
 
 export type GetApiV1ToolsListResponse = GetApiV1ToolsListResponses[keyof GetApiV1ToolsListResponses];
@@ -744,7 +1084,7 @@ export type GetApiV1ToolsByIdResponses = {
     /**
      * OK
      */
-    200: ToolDto;
+    200: ToolDetailDto;
 };
 
 export type GetApiV1ToolsByIdResponse = GetApiV1ToolsByIdResponses[keyof GetApiV1ToolsByIdResponses];
@@ -817,10 +1157,47 @@ export type GetApiV1UserToolConfigurationsByIdResponses = {
     /**
      * OK
      */
-    200: UserToolConfigurationDto;
+    200: UserToolConfigurationDetailDto;
 };
 
 export type GetApiV1UserToolConfigurationsByIdResponse = GetApiV1UserToolConfigurationsByIdResponses[keyof GetApiV1UserToolConfigurationsByIdResponses];
+
+export type GetApiV1UserToolConfigurationsPagedListData = {
+    body?: never;
+    path?: never;
+    query: {
+        keyword?: string;
+        Page: number;
+        PageSize: number;
+        Sorting?: string;
+    };
+    url: '/api/v1/UserToolConfigurations/PagedList';
+};
+
+export type GetApiV1UserToolConfigurationsPagedListResponses = {
+    /**
+     * OK
+     */
+    200: UserToolConfigurationItemDtoPagedResultDto;
+};
+
+export type GetApiV1UserToolConfigurationsPagedListResponse = GetApiV1UserToolConfigurationsPagedListResponses[keyof GetApiV1UserToolConfigurationsPagedListResponses];
+
+export type GetApiV1UserToolConfigurationsToolOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/UserToolConfigurations/ToolOptions';
+};
+
+export type GetApiV1UserToolConfigurationsToolOptionsResponses = {
+    /**
+     * OK
+     */
+    200: Array<UserToolConfigurationToolOptionItemDto>;
+};
+
+export type GetApiV1UserToolConfigurationsToolOptionsResponse = GetApiV1UserToolConfigurationsToolOptionsResponses[keyof GetApiV1UserToolConfigurationsToolOptionsResponses];
 
 export type PostApiV1UserToolConfigurationsSaveData = {
     body: SaveUserToolConfigurationDto;
@@ -837,3 +1214,17 @@ export type PostApiV1UserToolConfigurationsSaveResponses = {
 };
 
 export type PostApiV1UserToolConfigurationsSaveResponse = PostApiV1UserToolConfigurationsSaveResponses[keyof PostApiV1UserToolConfigurationsSaveResponses];
+
+export type PostApiV1UserToolConfigurationsSaveBatchData = {
+    body: Array<SaveUserToolConfigurationDto>;
+    path?: never;
+    query?: never;
+    url: '/api/v1/UserToolConfigurations/SaveBatch';
+};
+
+export type PostApiV1UserToolConfigurationsSaveBatchResponses = {
+    /**
+     * OK
+     */
+    200: unknown;
+};

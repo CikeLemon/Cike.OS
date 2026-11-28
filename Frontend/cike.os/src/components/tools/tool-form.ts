@@ -4,7 +4,7 @@ import type {
   HttpTransportMode,
   SkillToolSetting,
   StdioMcpToolSetting,
-  ToolDto,
+  ToolDetailDto,
   ToolParameterDefinition,
   ToolValue,
   ToolValueType,
@@ -99,7 +99,7 @@ function emptyToolForm(toolPackageId: string): ToolFormState {
   }
 }
 
-function toolFormFromDto(tool: ToolDto): ToolFormState {
+function toolFormFromDto(tool: ToolDetailDto): ToolFormState {
   const state = emptyToolForm(tool.toolPackageId ?? '')
   state.code = tool.code ?? ''
   state.name = tool.name ?? ''

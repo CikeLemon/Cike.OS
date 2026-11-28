@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ToolPackageCategoryDto } from '@/api'
-import { deleteApiV1ToolPackageCategoriesById, getApiV1ToolPackageCategoriesList } from '@/api'
+import type { ToolPackageCategoryDetailDto, ToolPackageCategoryItemDto } from '@/api'
+import { deleteApiV1ToolPackageCategoriesById, getApiV1ToolPackageCategoriesById, getApiV1ToolPackageCategoriesList } from '@/api'
 import { Pencil, Plus, Trash } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
@@ -12,12 +12,13 @@ import ToolPackageCategoryFormDialog from '@/components/tool-package-categories/
 import { getErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 
-const categories = ref<ToolPackageCategoryDto[]>([])
+const categories = ref<ToolPackageCategoryItemDto[]>([])
 const loading = ref(true)
 const dialogOpen = ref(false)
-const editing = ref<ToolPackageCategoryDto | null>(null)
-const deleting = ref<ToolPackageCategoryDto | null>(null)
+const editing = ref<ToolPackageCategoryDetailDto | null>(null)
+const deleting = ref<ToolPackageCategoryItemDto | null>(null)
 const deleteBusy = ref(false)
+const detailBusy = ref(false)
 
 async function load() {
   loading.value = true
@@ -38,9 +39,21 @@ function openCreate() {
   dialogOpen.value = true
 }
 
-function openEdit(category: ToolPackageCategoryDto) {
-  editing.value = category
-  dialogOpen.value = true
+/** 编辑前先按 Id 取详情回填表单，不拿列表行；失败 toast 且不打开 */
+async function openEdit(category: ToolPackageCategoryItemDto) {
+  if (!category.id || detailBusy.value) return
+  detailBusy.value = true
+  try {
+    const result = await getApiV1ToolPackageCategoriesById({ path: { id: category.id } })
+    if (result.error) {
+      toast.error(getErrorMessage(result))
+      return
+    }
+    editing.value = result.data ?? null
+    dialogOpen.value = true
+  } finally {
+    detailBusy.value = false
+  }
 }
 
 async function confirmDelete() {
@@ -100,7 +113,7 @@ onMounted(load)
             <TableCell class="text-muted-foreground">{{ formatDateTime(category.updatedAt) }}</TableCell>
             <TableCell class="text-right">
               <div class="flex justify-end gap-1">
-                <Button size="icon-sm" variant="ghost" aria-label="重命名" @click="openEdit(category)">
+                <Button size="icon-sm" variant="ghost" aria-label="重命名" :disabled="detailBusy" @click="openEdit(category)">
                   <Pencil />
                 </Button>
                 <Button size="icon-sm" variant="ghost" aria-label="删除" @click="deleting = category">

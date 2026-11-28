@@ -15,11 +15,11 @@ public class ToolPackageCategoryTests : IClassFixture<CikeOSTestHost>
         _host = host;
     }
 
-    private async Task<ToolPackageCategoryDto> CreateCategoryAsync(string name)
+    private async Task<ToolPackageCategoryDetailDto> CreateCategoryAsync(string name)
     {
         var id = await TestDataFactory.CreateCategoryAsync(_host, name);
 
-        var query = new GetToolPackageCategoryQuery(id);
+        var query = new GetToolPackageCategoryDetailQuery(id);
         await _host.PublishAsync(query);
         return query.Result!;
     }
@@ -64,7 +64,7 @@ public class ToolPackageCategoryTests : IClassFixture<CikeOSTestHost>
             Name = "新名",
         }));
 
-        var query = new GetToolPackageCategoryQuery(category.Id);
+        var query = new GetToolPackageCategoryDetailQuery(category.Id);
         await _host.PublishAsync(query);
 
         Assert.Equal("新名", query.Result!.Name);
@@ -77,7 +77,7 @@ public class ToolPackageCategoryTests : IClassFixture<CikeOSTestHost>
 
         await _host.PublishAsync(new DeleteToolPackageCategoryCommand(category.Id));
 
-        var query = new GetToolPackageCategoryQuery(category.Id);
+        var query = new GetToolPackageCategoryDetailQuery(category.Id);
         await _host.PublishAsync(query);
 
         Assert.Null(query.Result);
@@ -120,7 +120,7 @@ public class ToolPackageCategoryTests : IClassFixture<CikeOSTestHost>
 
         await _host.PublishAsync(new UpdateToolPackageCategoryCommand(categoryId, new UpdateToolPackageCategoryDto { Name = " 甲 " }));
 
-        var query = new GetToolPackageCategoryQuery(categoryId);
+        var query = new GetToolPackageCategoryDetailQuery(categoryId);
         await _host.PublishAsync(query);
         Assert.Equal("甲", query.Result!.Name);
     }

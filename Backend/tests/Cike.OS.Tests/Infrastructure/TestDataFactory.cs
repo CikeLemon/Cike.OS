@@ -1,8 +1,11 @@
+using Cike.OS.Application.Contracts.Agents.Dtos;
 using Cike.OS.Application.Contracts.ModelProviders.Dtos;
 using Cike.OS.Application.Contracts.Tags.Dtos;
 using Cike.OS.Application.Contracts.ToolPackageCategories.Dtos;
 using Cike.OS.Application.Contracts.ToolPackages.Dtos;
 using Cike.OS.Application.Contracts.Tools.Dtos;
+using Cike.OS.Application.Agents.Commands;
+using Cike.OS.Application.Agents.Queries;
 using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Application.Tags.Commands;
@@ -37,14 +40,15 @@ public static class TestDataFactory
         return command.Id;
     }
 
-    public static async Task<long> CreateToolAsync(CikeOSTestHost host, long packageId, string? code = null, ToolType type = ToolType.HttpMcp, string skillDirectory = "skills/0/placeholder")
+    public static async Task<long> CreateToolAsync(CikeOSTestHost host, long packageId, string? code = null, ToolType type = ToolType.HttpMcp, string skillDirectory = "skills/0/placeholder", List<ToolParameterDefinition>? parameters = null, string name = "测试工具")
     {
         var command = new CreateToolCommand(new CreateToolDto
         {
             Code = code ?? $"tool-{Guid.NewGuid():N}",
-            Name = "测试工具",
+            Name = name,
             Type = type,
             ToolPackageId = packageId,
+            Parameters = parameters ?? [],
             Setting = CreateSetting(type, skillDirectory),
         });
         await host.PublishAsync(command);
@@ -121,9 +125,9 @@ public static class TestDataFactory
         host.PublishAsync(new UpdateModelProviderCommand(providerId, provider));
 
     /// <summary>读回一个提供方（连接字段 + 按名称排序的全部模型）；不存在时为 null。</summary>
-    public static async Task<ModelProviderDto?> GetModelProviderAsync(CikeOSTestHost host, long providerId)
+    public static async Task<ModelProviderDetailDto?> GetModelProviderAsync(CikeOSTestHost host, long providerId)
     {
-        var query = new GetModelProviderQuery(providerId);
+        var query = new GetModelProviderDetailQuery(providerId);
         await host.PublishAsync(query);
         return query.Result;
     }
@@ -133,5 +137,59 @@ public static class TestDataFactory
         var command = new CreateTagCommand(new CreateTagDto { Key = key, Name = name });
         await host.PublishAsync(command);
         return command.Id;
+    }
+
+    private static string NewAgentName() => $"agent-{Guid.NewGuid():N}";
+
+    public static SaveAgentToolDto AgentTool(AgentToolType type, long targetId) => new() { Type = type, TargetId = targetId };
+
+    /// <summary>带一个必填敏感参数的工具（供用户工具配置与 Agent 跳转规则的用例造数）。</summary>
+    public static Task<long> CreateToolWithParametersAsync(CikeOSTestHost host, long packageId, string? name = null) =>
+        CreateToolAsync(host, packageId, name: name ?? $"带参数工具-{Guid.NewGuid():N}", parameters:
+        [
+            new ToolParameterDefinition { Code = "ak", Name = "Access key", Required = true, Sensitive = true },
+        ]);
+
+    /// <summary>Agent 的新建输入：名称不传时随机（同租户内不重名，避免用例间互撞）。</summary>
+    public static CreateAgentDto Agent(
+        string? name = null,
+        string? description = null,
+        string instructions = "You are a helpful assistant.",
+        AgentOptions? options = null,
+        IReadOnlyList<SaveAgentToolDto>? tools = null) => new()
+    {
+        Name = name ?? NewAgentName(),
+        Description = description,
+        Instructions = instructions,
+        Options = options ?? new AgentOptions(),
+        Tools = tools?.ToList() ?? [],
+    };
+
+    /// <summary>Agent 的更新输入：与新建同形（没有不可变字段）。</summary>
+    public static UpdateAgentDto AgentUpdate(CreateAgentDto dto) => new()
+    {
+        Name = dto.Name,
+        Description = dto.Description,
+        Instructions = dto.Instructions,
+        Options = dto.Options,
+        Tools = dto.Tools,
+    };
+
+    public static async Task<long> CreateAgentAsync(CikeOSTestHost host, CreateAgentDto? dto = null, IReadOnlyList<SaveAgentToolDto>? tools = null)
+    {
+        var command = new CreateAgentCommand(dto ?? Agent(tools: tools));
+        await host.PublishAsync(command);
+        return command.Id;
+    }
+
+    public static Task UpdateAgentAsync(CikeOSTestHost host, long agentId, UpdateAgentDto dto) =>
+        host.PublishAsync(new UpdateAgentCommand(agentId, dto));
+
+    /// <summary>读回一个 Agent（含工具条目）；不存在时为 null。</summary>
+    public static async Task<AgentDetailDto?> GetAgentAsync(CikeOSTestHost host, long agentId)
+    {
+        var query = new GetAgentDetailQuery(agentId);
+        await host.PublishAsync(query);
+        return query.Result;
     }
 }

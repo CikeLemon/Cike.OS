@@ -13,22 +13,22 @@ namespace Cike.OS.Service.Open.Services;
 [AutoValidation]
 public class ToolPackageService : MinimalApiServiceBase
 {
-    public async Task<Ok<PagedResultDto<ToolPackageDto>>> GetPagedListAsync(
+    public async Task<Ok<PagedResultDto<ToolPackageItemDto>>> GetPagedListAsync(
         [FromServices] ILocalEventBus eventBus,
-        [AsParameters] GetToolPackagePagedListDto dto,
+        [AsParameters] GetToolPackagePagedListRequestDto dto,
         CancellationToken cancellationToken = default)
     {
         var query = new GetToolPackagePagedListQuery(dto);
         await eventBus.PublishAsync(query, cancellationToken);
-        return TypedResults.Ok(query.Result ?? new PagedResultDto<ToolPackageDto>(0, []));
+        return TypedResults.Ok(query.Result ?? new PagedResultDto<ToolPackageItemDto>(0, []));
     }
 
-    public async Task<Results<Ok<ToolPackageDto>, NotFound>> GetAsync(
+    public async Task<Results<Ok<ToolPackageDetailDto>, NotFound>> GetAsync(
         [FromServices] ILocalEventBus eventBus,
         long id,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetToolPackageQuery(id);
+        var query = new GetToolPackageDetailQuery(id);
         await eventBus.PublishAsync(query, cancellationToken);
         return query.Result == null ? TypedResults.NotFound() : TypedResults.Ok(query.Result);
     }

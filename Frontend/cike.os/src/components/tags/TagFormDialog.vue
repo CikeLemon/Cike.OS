@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TagDto } from '@/api'
+import type { TagDetailDto } from '@/api'
 import { postApiV1Tags, putApiV1TagsById } from '@/api'
 import { LoaderCircle } from '@lucide/vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -14,7 +14,7 @@ import { getErrorMessage } from '@/lib/errors'
 const props = defineProps<{
   open: boolean
   /** 传入为编辑（改名），null 为新建；键创建后不可变，编辑态禁用 */
-  tag?: TagDto | null
+  tag?: TagDetailDto | null
 }>()
 
 const emit = defineEmits<{

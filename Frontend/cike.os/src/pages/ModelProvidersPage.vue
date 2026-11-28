@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ModelProviderDto, ModelProviderListDto, TagDto } from '@/api'
+import type { ModelProviderDetailDto, ModelProviderItemDto, TagItemDto } from '@/api'
 import { deleteApiV1ModelProvidersById, getApiV1ModelProvidersById, getApiV1ModelProvidersList, getApiV1TagsList } from '@/api'
 import { Pencil, Plus, Trash } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
@@ -14,20 +14,20 @@ import { getErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { protocolLabel } from '@/lib/model-provider-protocol'
 
-const providers = ref<ModelProviderListDto[]>([])
+const providers = ref<ModelProviderItemDto[]>([])
 const loading = ref(true)
 
 // 标签只有 id 列表，表单里的名称从这里查表回显
-const tags = ref<TagDto[]>([])
+const tags = ref<TagItemDto[]>([])
 // 标签列表没加载成功时：编辑框不过滤回填、不允许保存
 const tagsReady = ref(false)
 
 const dialogOpen = ref(false)
 /** 编辑对象：点编辑时按 Id 取到的详情（连接字段 + 全部模型），null 为新建 */
-const editing = ref<ModelProviderDto | null>(null)
+const editing = ref<ModelProviderDetailDto | null>(null)
 const opening = ref(false)
 
-const deleting = ref<ModelProviderListDto | null>(null)
+const deleting = ref<ModelProviderItemDto | null>(null)
 /** 名称单独存：确认框关闭动画期间 deleting 已被清空，直接读它会闪成空串 */
 const deletingName = ref('')
 const deleteBusy = ref(false)
@@ -62,7 +62,7 @@ function openCreate() {
 }
 
 /** 编辑前先按 Id 取详情：表单里是这个提供方此刻最新的连接信息和全部模型，不拿列表行回填。标签列表没就绪时按钮禁用，与保存同一口径 */
-async function openEdit(provider: ModelProviderListDto) {
+async function openEdit(provider: ModelProviderItemDto) {
   if (opening.value) return
 
   opening.value = true

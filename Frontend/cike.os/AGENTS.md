@@ -21,7 +21,8 @@ pnpm dev              # 开发服务器（Vite，默认 http://localhost:5173）
 pnpm build            # 类型检查 + 生产构建（vue-tsc -b && vite build）
 pnpm preview          # 预览构建产物
 pnpm exec vue-tsc -b  # 只跑类型检查（不构建）
-pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方表单校验与请求体、模型条目的加入 / 替换 / 移除、过滤 / 格式化）
+pnpm test              # vitest：只跑抽出的纯函数接缝（nav-items 推导、工具 / 模型提供方 / 标签 / Agent 表单校验与请求体、模型条目的加入 / 替换 / 移除、工具参数表单、过滤 / 格式化）
+
 pnpm gen:api           # 从后端 swagger 重新生成 API 层（配置见 openapi-ts.config.ts；来源按 .env.[mode] 解析，见下）
 # 按环境生成：OPENAPI_MODE=production pnpm gen:api（从生产 swagger 生成）或 OPENAPI_INPUT=https://.../swagger/v1/swagger.json pnpm gen:api
 ```
@@ -40,11 +41,11 @@ src/
 │                       #   client.gen.ts（`client` 实例，从 '@/api/client.gen' 导入）
 ├─ components/          # 业务组件（自己写）
 │  ├─ shared/           # 跨模块复用的业务包装（DeleteConfirmDialog、TablePagination）
-│  ├─ tool-packages/ tool-package-categories/ tools/ tags/ model-providers/   # 按模块分目录；*.test.ts 旁边放纯函数测试（tags/ 下有跨模块复用的 TagMultiSelect）
+│  ├─ tool-packages/ tool-package-categories/ tools/ tags/ model-providers/ agents/ tool-configurations/   # 按模块分目录；*.test.ts 旁边放纯函数测试（tags/ 下有跨模块复用的 TagMultiSelect）
 │  └─ ui/               # shadcn-vue 生成物——勿手改，见专节
 ├─ lib/
 │  ├─ errors.ts         # getErrorMessage(result)：从生成 client 的失败结果提取中文文案（字串 / ProblemDetails.errors / 404 / 5xx）
-│  ├─ tool-status.ts tool-type.ts model-provider-protocol.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数
+│  ├─ tool-status.ts tool-type.ts model-provider-protocol.ts agent-options.ts format.ts filter.ts   # 与后端枚举对齐的 const 对象 + 纯函数（agent-options 含可空下拉的「不设置」哨兵 SELECT_UNSET）
 │  └─ utils.ts          # cn()：clsx + tailwind-merge 合并类名
 ├─ assets/              # 图片等静态资源
 └─ composables/         # 组合式函数（约定目录，按需惰性创建）
@@ -65,7 +66,8 @@ const { data, error } = await getApiV1AppSystemsPagedList({
 if (error) toast.error(getErrorMessage(error))
 ```
 
-- 后端契约变更后跑 `pnpm gen:api` 重新生成，不手改 `src/api/` 生成物。
+- **后端契约变更后跑 `pnpm gen:api` 重新生成，不手改 `src/api/` 生成物。生成类型的命名与后端一一对应：`XxxDetailDto` 详情、`XxxItemDto` 列表行、`Xxx<功能>ItemDto` 选项 / 候选、`CreateXxxDto` / `UpdateXxxDto` / `SaveXxxDto` 输入；看到类型名就知道它该用在哪里。
+- **编辑一律调详情接口，禁止拿列表行回填表单**（2026-11-28 用户点名「代码就烂透了」）：列表行（`XxxItemDto`）只有列表显示的字段，点「编辑」要按 Id 调详情接口（`getXxxById`），成功后才打开表单、失败 toast 不打开，请求期间编辑按钮禁用防重入；先例 `TagsPage.openEdit`、`ToolPackagesPage.openEdit`、`ToolPackageDetailPage.openEditTool`、`ToolConfigurationsPage.openEdit`。
 - 函数名由后端路由拼接而来（后端 swagger 无 operationId），如 `putApiV1PermissionsById`。
 - 后端 API 地址一律来自 `.env.[mode]`，**禁止在代码或配置里硬编码**；只有 `development` / `production` 两套环境，没有测试环境：
   - `VITE_API_BASE_URL`：浏览器直连的基地址（`main.ts` 里 `client.setConfig`）；开发态留空 = 同源，由 Vite 代理 `/api`
@@ -99,6 +101,10 @@ if (error) toast.error(getErrorMessage(error))
   - 分页列表默认传 `Sorting: 'UpdatedAt desc'`（最近更新的在最前），由前端传、不烤进后端；表单里用来挑条目的下拉 / 选择器不在此列，按名称排。
   - 实体列表页（模型提供方、工具包、标签、工具包分类）一律同时显示「创建时间」「更新时间」两列，放在操作列前，用 `lib/format.ts` 的 `formatDateTime`。聚合内子项表（提供方表单里的模型、工具包详情里的工具）不加——它们随父级一起维护，不是独立的实体列表页。
 - **图标只用 `@lucide/vue`**：本项目依赖的是 `@lucide/vue`，禁止引入 `lucide-vue-next` 或其它图标库（两者包名 / API 不同，混用会重复打包）。
+- **shadcn-vue `Select` 的两条硬规则**（2026-11-27 Agent 表单走查实测）：① `SelectItem` 的 `value` 不能是空串（reka-ui 把空串保留给清除选择，传空串整组下拉卡死）——可空字段统一用 `lib/agent-options.ts` 的 `SELECT_UNSET` 哨兵表示「不设置」，表单状态 ↔ 下拉值用 `toSelectValue` / `fromSelectValue` 互转；② `SelectItem` 的 `value` 与 `v-model` 的类型必须一致（数字枚举选项要 `String(option.value)`，否则选中后触发器回显空白）。
+- **`Input type="number"` 的 `v-model` 会把值转成 number**：表单状态即使声明为 `string`，运行时也是 number，转换函数要同时接受两种（先例 `agent-form.ts` 的 `inputToNumber`），直接 `.trim()` 会炸。
+- **受控输入走组件声明的 `v-model` / `:model-value` + `@update:model-value`**：不要给 shadcn `Input` 传 `:value` + `@input`，它的内部 `v-model` 会与透传的 `value` 打架，表单状态拿不到输入。
+- **对话框里的步骤切换**：多步表单用可点击的步骤标题（不是向导控件），底部「保存」始终可用，校验失败时切回出错的那一步；先例 `AgentFormDialog.vue`。
 
 ## 配色约束（zinc 中性色板）
 

@@ -8,6 +8,9 @@ using Cike.OS.Application;
 using Cike.OS.Application.SkillPackages;
 using Cike.OS.EntityFrameworkCore;
 using Cike.OS.Service.Open.Swagger;
+using Cike.Security;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.OpenApi;
@@ -34,6 +37,12 @@ public class CikeOSServiceOpenModule : CikeModule
         {
             options.EnabledAuthorization = !environment.IsDevelopment();
         });
+
+        // 开发态没有认证也就没有当前用户：用户工具配置按当前用户隔离，给一个固定的开发用户
+        if (environment.IsDevelopment())
+        {
+            context.Services.Replace(ServiceDescriptor.Singleton<ICurrentUser>(new DevelopmentCurrentUser()));
+        }
 
         // 请求 / 响应 JSON 与持久化共用同一容忍度：多态判别键 type 不要求在对象首位
         context.Services.ConfigureHttpJsonOptions(options =>

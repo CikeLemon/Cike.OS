@@ -4,7 +4,9 @@ using Cike.OS.Application.ModelProviders.Commands;
 using Cike.OS.Application.ModelProviders.Queries;
 using Cike.OS.Domain.Shared.Enums;
 using Cike.OS.Domain.Shared.ValueObjects;
+using Cike.OS.EntityFrameworkCore;
 using Cike.OS.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -41,10 +43,10 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
     private Task UpdateAsync(long providerId, UpdateModelProviderDto provider) =>
         TestDataFactory.UpdateModelProviderAsync(_host, providerId, provider);
 
-    private async Task<ModelProviderDto> GetAsync(long providerId) =>
+    private async Task<ModelProviderDetailDto> GetAsync(long providerId) =>
         await TestDataFactory.GetModelProviderAsync(_host, providerId) ?? throw new InvalidOperationException();
 
-    private async Task<List<ModelProviderListDto>> ListAsync()
+    private async Task<List<ModelProviderItemDto>> ListAsync()
     {
         var query = new GetModelProviderListQuery();
         await _host.PublishAsync(query);
@@ -245,7 +247,10 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
             TestDataFactory.Model("keep", "旧描述"),
             TestDataFactory.Model("remove"),
         ]));
-        var keptId = (await GetAsync(providerId)).Models[0].Id;
+        // 详情里的模型条目不带 Id，「仍是原来那一条」要对着库里的行验
+        using var scope = _host.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CikeOSDbContext>();
+        var keptId = (await dbContext.Models.SingleAsync(x => x.ModelProviderId == providerId && x.Name == "keep")).Id;
 
         await UpdateAsync(providerId, TestDataFactory.ProviderUpdate(models:
         [
@@ -257,9 +262,11 @@ public class ModelProviderTests : IClassFixture<CikeOSTestHost>
         var provider = await GetAsync(providerId);
         Assert.Equal(["add", "keep"], provider.Models.Select(x => x.Name).ToList());
         var kept = provider.Models[1];
-        Assert.Equal(keptId, kept.Id);
         Assert.Equal("新描述", kept.Description);
         Assert.Equal([tagId], kept.TagIds);
+        Assert.Equal(keptId, (await dbContext.Models.SingleAsync(x => x.ModelProviderId == providerId && x.Name == "keep")).Id);
+        var removed = await dbContext.Models.IgnoreQueryFilters().SingleAsync(x => x.ModelProviderId == providerId && x.Name == "remove");
+        Assert.True(removed.IsDeleted);
     }
 
     [Fact]
